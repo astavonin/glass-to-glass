@@ -1,0 +1,90 @@
+# mkdocs.yml - Configuration for MkDocs
+
+site_name: Glass-to-Glass Video Pipeline
+site_description: A practical reference for building glass-to-glass video pipelines on constrained hardware. This site complements the code by explaining design choices, failure modes, and observed behavior across the system.
+repo_url: https://github.com/astavonin/glass-to-glass
+site_url: https://gtog.dev
+
+theme:
+  name: material
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+
+  icon:
+    annotation: material/plus-circle
+  features:
+    - navigation.indexes
+    - navigation.instant
+    - navigation.footer
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+    - toc.follow
+    - navigation.sections
+    - navigation.tabs
+    - toc.integrate
+
+extra:
+  social:
+    - icon: fontawesome/solid/square-rss
+      link: https://goperf.dev/feed_rss_created.xml
+    - icon: fontawesome/brands/github
+      link: https://github.com/astavonin/glass-to-glass
+  analytics:
+    provider: google
+    property: G-9G75PKHPKN
+
+nav:
+  - Home: index.md
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.tilde
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - pymdownx.blocks.caption
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+
+plugins:
+  - search
+  - blog
+  - glightbox
+  - include-markdown
+  - rss:
+      match_path: "(blog|01-common-patterns|02-networking)/.*"
+      date_from_meta:
+        as_creation: date.created
+        as_update: date.updated
