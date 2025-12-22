@@ -51,7 +51,7 @@ extra:
       link: https://github.com/astavonin/glass-to-glass
   analytics:
     provider: google
-    property: G-9G75PKHPKN
+    property: G-8XBZY8WGLD
 
 nav:
   - Home: index.md
