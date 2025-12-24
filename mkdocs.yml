@@ -55,6 +55,7 @@ extra:
 
 nav:
   - Home: index.md
+  - Cross-Compiling Rust for Raspberry Pi: rust-on-pi.md
 
 markdown_extensions:
   - toc:
