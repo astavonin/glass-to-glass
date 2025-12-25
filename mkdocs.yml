@@ -46,7 +46,7 @@ theme:
 extra:
   social:
     - icon: fontawesome/solid/square-rss
-      link: https://goperf.dev/feed_rss_created.xml
+      link: https://gtog.dev/feed_rss_created.xml
     - icon: fontawesome/brands/github
       link: https://github.com/astavonin/glass-to-glass
   analytics:
@@ -88,7 +88,7 @@ plugins:
   - glightbox
   - include-markdown
   - rss:
-      match_path: "(blog|01-common-patterns|02-networking)/.*"
+      match_path: "(blog|part01)/.*"
       date_from_meta:
         as_creation: date.created
         as_update: date.updated
