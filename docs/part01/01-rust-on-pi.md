@@ -1,9 +1,9 @@
 # Cross-Compiling Rust for Raspberry Pi
 
 !!! example
-    If you're not interested in the reasoning behind the solution but just want a reference, there is a [small repository for you](https://github.com/astavonin/pi-cam-capture/tree/ci-and-cross). It includes the capture loop, cross-compilation setup, CI pipeline, and all supporting configurations, presented exactly as they are today.
+    If you just want the end result, use the repo diff as a reference: [pi-cam-capture?diff](https://github.com/astavonin/pi-cam-capture/tree/ci-and-cross).
 
-    It’s the straightforward, no-commentary version of this article.
+    It shows the exact changes covered in this article, as they exist in the repository today, without extra commentary.
 
 The goal of this project is straightforward: build a glass-to-glass video pipeline using a Raspberry Pi as a physical device for demo purposes. This article covers the first step, building the foundation that everything else will depend on. At this stage, a USB `V4L2` camera is enough. It allows exercising the capture path and, more importantly, the build and CI setup, which should be a first step for any long-term project, even a demo one.
 
@@ -26,7 +26,7 @@ To start, it makes sense to use something as small as possible while still refle
 
 This keeps the focus where it belongs in the initial phase: not on feature completeness, but on whether the build environment, dependencies, and target architecture behave consistently under cross-compilation.
 
-![](01.01-tests-interractions.png){ width="640" }
+![](img/01.01-tests-interractions.png){ width="640" }
 
 ```rust
 let dev = v4l::Device::new(0)?;
@@ -136,7 +136,7 @@ The important part here is that the toolchain is no longer spread across multipl
 
 CI resources are limited, so build time needs to be used carefully. Running native x86 builds on GitHub Actions provides fast feedback from unit and integration tests without paying the overhead of container startup or invoking the aarch64 toolchain. For feature branches and routine development, this level of validation is sufficient and keeps the feedback loop short.
 
-![](01.02-CI-builds.png){ width="640" }
+![](img/01.02-CI-builds.png){ width="640" }
 
 Cross-compiling for ARM adds real overhead: container startup, toolchain initialization, and `bindgen` running against the correct `libclang`. This is reasonable when an ARM artifact is actually needed, but it is unnecessary work for every feature branch. A common compromise is to run fast native x86 builds on branches, and run aarch64 cross-builds only on `main`, where release artifacts are produced. This keeps CI feedback fast while still guaranteeing that the deployable binary is built in a reproducible ARM environment.
 

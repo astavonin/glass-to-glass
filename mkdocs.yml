@@ -55,7 +55,10 @@ extra:
 
 nav:
   - Home: index.md
-  - Cross-Compiling Rust for Raspberry Pi: rust-on-pi.md
+  - Frame Capture:
+    - part01/index.md
+    - Cross-Compiling Rust for Raspberry Pi: part01/01-rust-on-pi.md
+    - Integration Testing for Linux Video Pipelines: part01/02-emulation-and-video-testing.md
 
 markdown_extensions:
   - toc:
