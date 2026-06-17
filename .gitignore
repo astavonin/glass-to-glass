@@ -74,6 +74,8 @@ Sessionx.vim
 # Temporary
 .netrwhist
 *~
+*.local.md
+
 # Auto-generated tag files
 tags
 # Persistent undo

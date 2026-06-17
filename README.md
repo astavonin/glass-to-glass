@@ -1,5 +1,7 @@
 # TBD
 
+The companion implementation repository is at **[github.com/astavonin/pi-cam-capture](https://github.com/astavonin/pi-cam-capture)**.
+
 ---
 
 ## Getting Started
