@@ -1,0 +1,1443 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A practical reference for building glass-to-glass video pipelines on constrained hardware. This site complements the code by explaining design choices, failure modes, and observed behavior across the system.">
+      
+      
+      
+        <link rel="canonical" href="https://gtog.dev/appendix/A1-camera-sensor-fundamentals/">
+      
+      
+        <link rel="prev" href="../">
+      
+      
+      
+        
+      
+      
+        <link rel="alternate" type="application/rss+xml" title="RSS feed" href="../../feed_rss_created.xml">
+        <link rel="alternate" type="application/rss+xml" title="RSS feed of updated content" href="../../feed_rss_updated.xml">
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>A1 — Camera Sensor Fundamentals - Glass-to-Glass Video Pipeline</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+  
+  
+  
+  
+  <style>:root{--md-annotation-icon:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M17%2013h-4v4h-2v-4H7v-2h4V7h2v4h4m-5-9A10%2010%200%200%200%202%2012a10%2010%200%200%200%2010%2010%2010%2010%200%200%200%2010-10A10%2010%200%200%200%2012%202%22/%3E%3C/svg%3E');}</style>
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-8XBZY8WGLD"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-8XBZY8WGLD",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-8XBZY8WGLD",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  <link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#a1-camera-sensor-fundamentals" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Glass-to-Glass Video Pipeline" class="md-header__button md-logo" aria-label="Glass-to-Glass Video Pipeline" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Glass-to-Glass Video Pipeline
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              A1 — Camera Sensor Fundamentals
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to system preference" type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required="">
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix="">
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/astavonin/glass-to-glass" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../part01/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Frame Capture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Appendix
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Glass-to-Glass Video Pipeline" class="md-nav__button md-logo" aria-label="Glass-to-Glass Video Pipeline" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    Glass-to-Glass Video Pipeline
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/astavonin/glass-to-glass" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix="">
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2">
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../part01/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frame Capture
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Frame Capture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix="">
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/01-rust-on-pi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Compiling Rust for Raspberry Pi
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/02-emulation-and-video-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration Testing for Linux Video Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked="">
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Appendix
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix="">
+            
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A1 — Camera Sensor Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A1 — Camera Sensor Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#how-camera-sensors-work" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How Camera Sensors Work
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-bayer-color-filter-array" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Bayer Color Filter Array
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The Bayer Color Filter Array">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bayer-pattern-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bayer Pattern Variants
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pattern-phase-and-crop-alignment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern Phase and Crop Alignment
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bit-depth-10-bit-vs-12-bit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bit Depth: 10-bit vs 12-bit
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Bit Depth: 10-bit vs 12-bit">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quality-differences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality Differences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#raspberry-pi-camera-sensors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Raspberry Pi Camera Sensors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#packed-and-unpacked-raw-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Packed and Unpacked Raw Formats
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Packed and Unpacked Raw Formats">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#10-bit-packed-mipi-raw10-4-pixels-in-5-bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10-bit Packed (MIPI RAW10): 4 pixels in 5 bytes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-bit-packed-mipi-raw12-2-pixels-in-3-bytes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12-bit Packed (MIPI RAW12): 2 pixels in 3 bytes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rolling-shutter-vs-global-shutter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rolling Shutter vs Global Shutter
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Rolling Shutter vs Global Shutter">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-the-roll-actually-does" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What the Roll Actually Does
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sensor-modes-and-binning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sensor Modes and Binning
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Sensor Modes and Binning">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#imx708-modes-camera-module-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IMX708 Modes (Camera Module 3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#imx477-modes-hq-camera" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        IMX477 Modes (HQ Camera)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#selecting-a-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Selecting a Mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#hdr-capture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HDR Capture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#glossary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Glossary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#further-reading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Further Reading
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="a1-camera-sensor-fundamentals">A1 — Camera Sensor Fundamentals<a class="headerlink" href="#a1-camera-sensor-fundamentals" title="Permanent link">¶</a></h1>
+<p>Photodiodes, Bayer colour filter arrays, bit depth, packed raw formats, rolling shutter, sensor modes, and HDR. Referenced from Part 1/04 (pixel formats in code).</p>
+<blockquote>
+<p><strong>Platform note:</strong> All bit-level layouts here assume <strong>little-endian</strong> byte order. Raspberry Pi 5 (BCM2712, Cortex-A76) is little-endian. Adjust if you port to a big-endian system.</p>
+</blockquote>
+<hr>
+<h2 id="how-camera-sensors-work">How Camera Sensors Work<a class="headerlink" href="#how-camera-sensors-work" title="Permanent link">¶</a></h2>
+<p>Pull a raw frame straight off <code>/dev/video0</code> on the Pi 5 and you don't get a picture. You get a block of 10-bit packed bytes that decodes to a green-tinted grid of garbage. Everything in this appendix lives between that block and an actual image: how the sensor turns photons into numbers, why those numbers skew green, and how they get crammed into memory.</p>
+<p>A sensor is a grid of millions of photodiodes, and each one does the same dumb job. Collect photons during exposure. Let them knock loose some charge. Read the charge out as a voltage. Hand the voltage to an ADC. Four steps, a few million times a frame.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a1-capture-pipeline.png" data-desc-position="bottom"><img alt="Photodiode capture pipeline: photons in, charge, voltage, digital value" src="../img/a1-capture-pipeline.png"></a></p>
+<p>The catch: a photodiode can't see colour. It counts photons, full stop. Red light and blue light of the same intensity hand back the same number. That's the problem the Bayer filter exists to solve.</p>
+<hr>
+<h2 id="the-bayer-color-filter-array">The Bayer Color Filter Array<a class="headerlink" href="#the-bayer-color-filter-array" title="Permanent link">¶</a></h2>
+<p>Kodak's fix, from Bryce Bayer in 1976, is almost insultingly simple. Glue a tiny coloured filter over each photodiode so it only sees one colour. Arrange those filters in a repeating pattern, and you can reconstruct full colour later from the neighbours. That array of filters is the colour filter array, or CFA.</p>
+<p>The usual pattern is a 2x2 tile: one red, one blue, and two green on the diagonal. That tile repeats across the whole sensor.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a1-Bayer-pattern.png" data-desc-position="bottom"><img alt="RGGB 2x2 unit tiled across the sensor" src="../img/a1-Bayer-pattern.png"></a></p>
+<p>Why two greens? Your eyes care about green more than red or blue. Most of what you perceive as sharpness and brightness rides on the green channel, so doubling it buys more luminance detail where it matters and leaves the colour reconstruction cleaner.</p>
+<h3 id="bayer-pattern-variants">Bayer Pattern Variants<a class="headerlink" href="#bayer-pattern-variants" title="Permanent link">¶</a></h3>
+<p>Not every sensor starts the tile in the same corner. Same four filters, different starting phase, and the debayering code has to know which is which. Get it wrong and red and blue swap, so faces go blue and skies go orange.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a1-pattern-variants.png" data-desc-position="bottom"><img alt="Bayer variants RGGB, BGGR, GRBG, GBRG with sensor mapping" src="../img/a1-pattern-variants.png"></a></p>
+<h3 id="pattern-phase-and-crop-alignment">Pattern Phase and Crop Alignment<a class="headerlink" href="#pattern-phase-and-crop-alignment" title="Permanent link">¶</a></h3>
+<p>Here's a trap that costs people an afternoon. Crop a raw Bayer frame at an odd pixel coordinate and the pattern shifts under you. An RGGB frame cropped at (0, 0) is still RGGB. Crop the same frame at (1, 0) and it reads as GRBG. The mapping for an RGGB base:</p>
+<table>
+<thead>
+<tr>
+<th>Crop origin (x, y)</th>
+<th>Effective pattern</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(even, even)</td>
+<td>RGGB</td>
+</tr>
+<tr>
+<td>(odd, even)</td>
+<td>GRBG</td>
+</tr>
+<tr>
+<td>(even, odd)</td>
+<td>GBRG</td>
+</tr>
+<tr>
+<td>(odd, odd)</td>
+<td>BGGR</td>
+</tr>
+</tbody>
+</table>
+<p>So any ROI or pipeline stage that crops raw data has to snap its crop origin to even coordinates on both axes, or you change the pattern without meaning to. If the sensor driver does a hardware crop, check <code>VIDIOC_SELECTION</code> or the pad format rectangle. The driver might shift the rectangle to keep Bayer alignment, or it might not, in which case the reported origin tells you the phase offset you're stuck with.</p>
+<p>The parity rule is general. For any base pattern, the effective CFA shifts one position inside the 2x2 tile for each odd step in x or y. The table uses RGGB because that's the IMX708 case. Start from your sensor's real base (BGGR for the IMX477) and apply the same modular shift.</p>
+<hr>
+<h2 id="bit-depth-10-bit-vs-12-bit">Bit Depth: 10-bit vs 12-bit<a class="headerlink" href="#bit-depth-10-bit-vs-12-bit" title="Permanent link">¶</a></h2>
+<p>People argue 10-bit versus 12-bit like it's a quality tier you buy up into. It mostly isn't. Bit depth is how finely you slice the range, not how wide the range is.</p>
+<p><strong>Bit depth</strong> sets how many brightness levels each pixel can distinguish:</p>
+<table>
+<thead>
+<tr>
+<th>Bit Depth</th>
+<th>Brightness Levels</th>
+<th>Max linearly-representable DR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8-bit</td>
+<td>256</td>
+<td>256:1 (~8 stops)</td>
+</tr>
+<tr>
+<td>10-bit</td>
+<td>1,024</td>
+<td>1,024:1 (~10 stops)</td>
+</tr>
+<tr>
+<td>12-bit</td>
+<td>4,096</td>
+<td>4,096:1 (~12 stops)</td>
+</tr>
+<tr>
+<td>14-bit</td>
+<td>16,384</td>
+<td>16,384:1 (~14 stops)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Dynamic range</strong> is a physics property of the sensor: full-well charge capacity over the read noise floor, the brightest signal it can hold against the faintest it can still tell apart. Bit depth doesn't set that. It sets the precision you quantise it with.</p>
+<p>The rule that matters: bit depth has to cover at least as many stops as the sensor's native DR. A 10-stop sensor needs 10 bits to keep every distinguishable tone; go lower and you get banding. Go higher and you're spending bits on noise. When the depth exactly matches the native DR, every stop gets an equal slice of the budget:</p>
+<table>
+<thead>
+<tr>
+<th>Bit depth</th>
+<th>2^N / N stops</th>
+<th>Levels per stop</th>
+<th>Banding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>8-bit</td>
+<td>256 / 8</td>
+<td>32</td>
+<td>visible in smooth sky gradients</td>
+</tr>
+<tr>
+<td>10-bit</td>
+<td>1024 / 10</td>
+<td>102</td>
+<td>imperceptible</td>
+</tr>
+<tr>
+<td>12-bit</td>
+<td>4096 / 12</td>
+<td>341</td>
+<td>very smooth</td>
+</tr>
+</tbody>
+</table>
+<p>These hold for any sensor whose native DR equals what the depth can encode. Capture an 8-stop sensor at 10-bit and the extra bits just sit there carrying nothing, banding gets even less likely. Run a sensor whose DR exceeds the depth and the banding shows up first in the shadows, where the steps are widest.</p>
+<p>The two Pi sensors: the IMX708 is about 10 stops native, the IMX477 about 12. So 10-bit already captures everything the IMX708 resolves in standard mode. Its HDR mode reaches further, but it does that by merging two exposures and tone-mapping back down to 10-bit, not by adding bits. Grabbing IMX708 standard output at 12 bits buys you bandwidth cost and zero information.</p>
+<h3 id="quality-differences">Quality Differences<a class="headerlink" href="#quality-differences" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>10-bit (IMX708)</th>
+<th>12-bit (IMX477)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tonal Gradations</td>
+<td>1,024 levels</td>
+<td>4,096 levels</td>
+</tr>
+<tr>
+<td>Banding Risk</td>
+<td>Low</td>
+<td>Very low</td>
+</tr>
+<tr>
+<td>Shadow Recovery</td>
+<td>Good</td>
+<td>Excellent</td>
+</tr>
+<tr>
+<td>Highlight Recovery</td>
+<td>Good</td>
+<td>Excellent</td>
+</tr>
+<tr>
+<td>File Size</td>
+<td>Smaller</td>
+<td>~20% larger</td>
+</tr>
+<tr>
+<td>Processing Speed</td>
+<td>Faster</td>
+<td>Slightly slower</td>
+</tr>
+<tr>
+<td>Best For</td>
+<td>Video, general use</td>
+<td>Photography, HDR</td>
+</tr>
+</tbody>
+</table>
+<h3 id="raspberry-pi-camera-sensors">Raspberry Pi Camera Sensors<a class="headerlink" href="#raspberry-pi-camera-sensors" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Camera Module 3 (IMX708)</th>
+<th>HQ Camera (IMX477)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Resolution</td>
+<td>4608 x 2592 (11.9 MP)</td>
+<td>4056 x 3040 (12.3 MP)</td>
+</tr>
+<tr>
+<td>Bit depth</td>
+<td>10-bit</td>
+<td>12-bit</td>
+</tr>
+<tr>
+<td>Raw format</td>
+<td><code>SRGGB10P</code> (packed 10-bit RGGB)</td>
+<td><code>SBGGR12P</code> (packed 12-bit BGGR)</td>
+</tr>
+<tr>
+<td>Pixel size</td>
+<td>1.4 µm</td>
+<td>1.55 µm</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="packed-and-unpacked-raw-formats">Packed and Unpacked Raw Formats<a class="headerlink" href="#packed-and-unpacked-raw-formats" title="Permanent link">¶</a></h2>
+<p>This is where the afternoon actually goes. The bytes off the device aren't one neat value per pixel. Pi sensors hand you the MIPI CSI-2 packed layout, RAW10 or RAW12, straight from <code>/dev/video0</code> on rp1-cfe, and if you read it like a normal array you get noise.</p>
+<h3 id="10-bit-packed-mipi-raw10-4-pixels-in-5-bytes">10-bit Packed (MIPI RAW10): 4 pixels in 5 bytes<a class="headerlink" href="#10-bit-packed-mipi-raw10-4-pixels-in-5-bytes" title="Permanent link">¶</a></h3>
+<p>Four bytes carry the top eight bits of four pixels. The fifth byte mops up the two low bits of each, most significant pixel first.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a1-MIPI-RAW10.png" data-desc-position="bottom"><img alt="MIPI RAW10 packing layout, 4 pixels in 5 bytes" src="../img/a1-MIPI-RAW10.png"></a></p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Unpack pixel N (N = 0..3) from a 5-byte RAW10 group</span>
+<span class="kt">uint16_t</span><span class="w"> </span><span class="n">msbs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">static_cast</span><span class="o">&lt;</span><span class="kt">uint16_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">byte</span><span class="p">[</span><span class="n">N</span><span class="p">])</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="kt">uint16_t</span><span class="w"> </span><span class="n">lsbs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">byte</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span><span class="w"> </span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="p">(</span><span class="n">N</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">2</span><span class="p">))</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x03u</span><span class="p">;</span>
+<span class="kt">uint16_t</span><span class="w"> </span><span class="n">pixelN</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">msbs</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">lsbs</span><span class="p">;</span><span class="w">   </span><span class="c1">// 10-bit value, range 0..1023</span>
+</code></pre></div>
+<h3 id="12-bit-packed-mipi-raw12-2-pixels-in-3-bytes">12-bit Packed (MIPI RAW12): 2 pixels in 3 bytes<a class="headerlink" href="#12-bit-packed-mipi-raw12-2-pixels-in-3-bytes" title="Permanent link">¶</a></h3>
+<p>Two bytes carry the top eight bits of two pixels. The third byte holds both low nibbles: pixel 1 high, pixel 0 low.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a1-MIPI-RAW12.png" data-desc-position="bottom"><img alt="MIPI RAW12 packing layout, 2 pixels in 3 bytes" src="../img/a1-MIPI-RAW12.png"></a></p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Unpack pixel 0 from a 3-byte RAW12 group</span>
+<span class="kt">uint16_t</span><span class="w"> </span><span class="n">msbs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">static_cast</span><span class="o">&lt;</span><span class="kt">uint16_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">byte</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mi">4</span><span class="p">;</span>
+<span class="kt">uint16_t</span><span class="w"> </span><span class="n">lsbs</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">byte</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="mh">0x0Fu</span><span class="p">;</span>
+<span class="kt">uint16_t</span><span class="w"> </span><span class="n">pixel0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">msbs</span><span class="w"> </span><span class="o">|</span><span class="w"> </span><span class="n">lsbs</span><span class="p">;</span><span class="w">   </span><span class="c1">// 12-bit value, range 0..4095</span>
+<span class="c1">// pixel1: msbs = byte[1] &lt;&lt; 4; lsbs = (byte[2] &gt;&gt; 4) &amp; 0x0F;</span>
+</code></pre></div>
+<p>The byte holding the low bits (byte 4 for RAW10, byte 2 for RAW12) puts pixel 0 at the bottom: bits [1:0] for RAW10, bits [3:0] for RAW12. Get the order backwards and every value is subtly wrong in a way that looks like noise, not a crash, which is why it eats time.</p>
+<p>There are <strong>unpacked variants</strong> too. Drop the <code>P</code> from the FourCC (<code>SRGGB10</code> instead of <code>SRGGB10P</code>) and each sample sits right-aligned in a 16-bit little-endian word, upper bits zeroed. Trivial to read, but you pay 60% more bandwidth at 10-bit and 33% at 12-bit. The FourCC encodes both axes at once: <code>SRGGB10P</code> is packed 10-bit RGGB, <code>SBGGR12P</code> is packed 12-bit BGGR.</p>
+<hr>
+<h2 id="rolling-shutter-vs-global-shutter">Rolling Shutter vs Global Shutter<a class="headerlink" href="#rolling-shutter-vs-global-shutter" title="Permanent link">¶</a></h2>
+<p>Every CMOS sensor on a Pi cheats. It doesn't expose the whole frame at once. It scans row by row from the top, and by the time the bottom row starts collecting light, the top row is already read out and reset. The exposure window rolls down the sensor.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a1-Rolling-shutter.png" data-desc-position="bottom"><img alt="Rolling shutter readout: each row offset by one line_duration" src="../img/a1-Rolling-shutter.png"></a></p>
+<p>A <strong>global shutter</strong> exposes every row at the same instant and reads them out after. No rolling artefacts, but it needs storage at every pixel, which eats silicon and costs you sensitivity. Both the IMX708 and the IMX477 are rolling-shutter parts, so you live with the artefacts.</p>
+<p>You can estimate readout time per mode from controls the driver exposes (see A5 §2.1):</p>
+<div class="highlight"><pre><span></span><code>readout_time = active_height × (active_width + hblank) / pixel_rate
+</code></pre></div>
+<p>Read <code>V4L2_CID_PIXEL_RATE</code> and <code>V4L2_CID_HBLANK</code> at runtime. Don't hard-code them, they change with the mode.</p>
+<h3 id="what-the-roll-actually-does">What the Roll Actually Does<a class="headerlink" href="#what-the-roll-actually-does" title="Permanent link">¶</a></h3>
+<p>Skew is the one you'll notice first. The top rows catch a moving subject earlier than the bottom rows, so anything fast leans. At 2304x1296 the IMX708 reads out in roughly 17.9 ms. A lazy 30 deg/s pan tilts the subject about half a degree, invisible. A hard sports whip-pan at 180 deg/s tilts it past three degrees, and now the whole subject leans on screen.</p>
+<div class="highlight"><pre><span></span><code>skew_angle_degrees ≈ angular_velocity_deg_per_s × readout_time_s
+</code></pre></div>
+<p>Slow the mode down and it gets worse fast. Full-resolution at 14fps reads out near 66 ms, so the same pan leans about 3.5 times harder. Then there's wobble, where sinusoidal handshake offsets each row's horizontal position and straight lines go wavy. And flash sync: a flash shorter than the readout lights only a band of rows, which caps sync speed at roughly one over the readout time. Shorter readout, smaller everything. Higher frame-rate modes are the cure.</p>
+<hr>
+<h2 id="sensor-modes-and-binning">Sensor Modes and Binning<a class="headerlink" href="#sensor-modes-and-binning" title="Permanent link">¶</a></h2>
+<p>Pi sensors don't give you a free-form crop knob. They expose a handful of fixed modes, each one a specific readout config that trades field of view, resolution, frame rate, and noise. Picking a mode is picking a point in that trade, whether you realise it or not.</p>
+<p>The mechanism behind the sub-resolution modes matters. <strong>Binning</strong> sums adjacent photosites before the ADC. In 2x2 binning, four sites become one output pixel: resolution halves on each axis, the full field of view stays, and sensitivity climbs about 4x, which buys roughly +6 dB SNR while amortising read noise. <strong>Line skipping</strong> just throws away alternating rows. Same resolution drop, same frame-rate win, none of the sensitivity gain, plus aliasing on fine detail because the skipped rows contributed nothing. The IMX708 and IMX477 bin rather than skip, so that SNR improvement is real and not a spec-sheet fairy tale.</p>
+<h3 id="imx708-modes-camera-module-3">IMX708 Modes (Camera Module 3)<a class="headerlink" href="#imx708-modes-camera-module-3" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Output size</th>
+<th>FPS</th>
+<th>Method</th>
+<th>Est. readout time</th>
+<th>FOV</th>
+<th>SNR delta</th>
+<th>libcamera selects at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Full</td>
+<td>4608 × 2592</td>
+<td>14</td>
+<td>No binning</td>
+<td>~66 ms</td>
+<td>Full</td>
+<td>Baseline</td>
+<td>4608×2592</td>
+</tr>
+<tr>
+<td>2×2 binned</td>
+<td>2304 × 1296</td>
+<td>56</td>
+<td>2×2 binning</td>
+<td>~17.9 ms</td>
+<td>Full</td>
+<td>+6 dB</td>
+<td>1920×1080, 1280×720</td>
+</tr>
+<tr>
+<td>2×2 binned crop</td>
+<td>1536 × 864</td>
+<td>120</td>
+<td>2×2 binning + centre crop</td>
+<td>~8.3 ms</td>
+<td>~50% area</td>
+<td>+6 dB</td>
+<td>640×480 and below</td>
+</tr>
+</tbody>
+</table>
+<p>Treat the readout times as estimates. For exact per-mode numbers, read <code>V4L2_CID_PIXEL_RATE</code> and <code>V4L2_CID_HBLANK</code> at runtime (see A5 §2.1).</p>
+<p>For video, 2304x1296 is the one to reach for: full field of view, far better low-light than full-res, and it fits the 2-lane CSI-2 budget at 56fps.</p>
+<h3 id="imx477-modes-hq-camera">IMX477 Modes (HQ Camera)<a class="headerlink" href="#imx477-modes-hq-camera" title="Permanent link">¶</a></h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Output size</th>
+<th>FPS</th>
+<th>Method</th>
+<th>Est. readout time</th>
+<th>FOV</th>
+<th>SNR delta</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Full</td>
+<td>4056 × 3040</td>
+<td>10</td>
+<td>No binning</td>
+<td>~90 ms</td>
+<td>Full</td>
+<td>Baseline</td>
+<td>Highest DR (12-bit)</td>
+</tr>
+<tr>
+<td>2×2 binned</td>
+<td>2028 × 1520</td>
+<td>40</td>
+<td>2×2 binning</td>
+<td>~25 ms</td>
+<td>Full</td>
+<td>+6 dB</td>
+<td>Video default</td>
+</tr>
+</tbody>
+</table>
+<p>The IMX477's pixels are larger (1.55 µm against the IMX708's 1.4 µm), so it pulls ahead in low light at the same mode before binning even enters the picture. Its lower top frame rate is the price of the bigger active area.</p>
+<h3 id="selecting-a-mode">Selecting a Mode<a class="headerlink" href="#selecting-a-mode" title="Permanent link">¶</a></h3>
+<p>You don't ask for a mode by name. You request a resolution and frame rate through <code>VIDIOC_S_FMT</code> and <code>VIDIOC_S_PARM</code>, and the driver snaps to the nearest mode it has. To see what's on offer before you negotiate, enumerate with <code>VIDIOC_ENUM_FRAMESIZES</code> and <code>VIDIOC_ENUM_FRAMEINTERVALS</code> (see <a href="A3-linux-camera-stack.md">A3 — Linux Camera Stack</a>).</p>
+<hr>
+<h2 id="hdr-capture">HDR Capture<a class="headerlink" href="#hdr-capture" title="Permanent link">¶</a></h2>
+<p>The IMX708 has a <strong>dual-exposure staggered HDR</strong> mode, and it's worth being clear about what it does before you switch it on. It captures two exposures per frame and merges them, reaching past the sensor's native ~10 stops.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a1-HDR.png" data-desc-position="bottom"><img alt="IMX708 dual-exposure HDR: long plus short exposure merged to a 10-bit tone-mapped output" src="../img/a1-HDR.png"></a></p>
+<p>The long exposure is your normal AE-driven shot and holds the shadows and mid-tones. The short one runs at a quarter to an eighth of that and keeps the highlights from clipping. The ISP merges them per pixel by luma: shadows from the long, highlights from the short, a blended seam in between. Out comes a 10-bit frame with roughly 12-plus stops of apparent range.</p>
+<p>Note the output is still 10-bit. The extra range lives in the tone curve, not in extra bits, and 10-bit covers the merged 12-stop range at about 341 levels per stop, smooth enough that you won't see steps.</p>
+<p>The constraints are where it bites. HDR only works in the 2304x1296 binned mode. Full-res and the 1536x864 120fps mode can't do it, their readout timing has no room for the second exposure. And the second exposure isn't free: that binned mode drops from 56fps to roughly 28 in HDR, because each output frame now needs two sequential captures. Verify the exact rate on your kernel and firmware, since the IPA tuning file can move it. You also pick up motion artefacts at the merge seam when the scene shifts between exposures, and flash sync is gone, because two exposures make the sync geometry inconsistent. You enable the whole thing through libcamera's <code>controls::HdrMode</code>; raw V4L2 won't expose it.</p>
+<p>It does play nicely with multi-stream output. The merged frame feeds the ISP like any other, so a low-res preview alongside the main recording works fine in HDR. The stream-count limits are in <a href="A2-isp-pipeline.md">A2 — Multi-Stream Output</a>.</p>
+<p>The IMX477 has none of this on-sensor. If you want HDR there, you merge sequential frames yourself in the application, and you eat the motion artefacts that come from the scene moving frame to frame. Which is the natural lead into A2, where the raw Bayer data finally meets the ISP.</p>
+<hr>
+<h2 id="glossary">Glossary<a class="headerlink" href="#glossary" title="Permanent link">¶</a></h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ADC</strong></td>
+<td>Analog-to-Digital Converter, converts sensor voltage to a digital value</td>
+</tr>
+<tr>
+<td><strong>Bayer Pattern</strong></td>
+<td>RGGB (or variant) colour filter array placed over the sensor</td>
+</tr>
+<tr>
+<td><strong>Binning</strong></td>
+<td>Combining adjacent photosites to raise sensitivity and enable higher frame rates</td>
+</tr>
+<tr>
+<td><strong>Bit Depth</strong></td>
+<td>Number of bits per pixel brightness level; must cover at least log₂(DR) stops</td>
+</tr>
+<tr>
+<td><strong>CFA</strong></td>
+<td>Colour Filter Array, the generic term for Bayer-like patterns</td>
+</tr>
+<tr>
+<td><strong>Dynamic Range</strong></td>
+<td>Ratio between the brightest and darkest capturable values, set by sensor physics</td>
+</tr>
+<tr>
+<td><strong>FourCC</strong></td>
+<td>Four Character Code identifying a pixel format (for example <code>SRGGB10P</code>)</td>
+</tr>
+<tr>
+<td><strong>Photodiode</strong></td>
+<td>Light-sensitive element on a camera sensor</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="further-reading">Further Reading<a class="headerlink" href="#further-reading" title="Permanent link">¶</a></h2>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Bayer_filter">Bayer filter — Wikipedia</a></li>
+<li><a href="https://www.sony-semicon.com/en/products/is/mobile/imx708.html">Sony IMX708 product page</a></li>
+<li><a href="https://www.sony-semicon.com/en/products/is/mobile/imx477.html">Sony IMX477 product page</a></li>
+<li><strong>Next:</strong> <a href="A2-isp-pipeline.md">A2 — The ISP Pipeline</a>, what happens to raw Bayer data before it reaches your application</li>
+</ul>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="../" class="md-footer__link md-footer__link--prev" aria-label="Previous: Reference Appendix">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Reference Appendix
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://gtog.dev/feed_rss_created.xml" target="_blank" rel="noopener" title="gtog.dev" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M64 32C28.7 32 0 60.7 0 96v320c0 35.3 28.7 64 64 64h320c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64zm32 104c0-13.3 10.7-24 24-24 137 0 248 111 248 248 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-110.5-89.5-200-200-200-13.3 0-24-10.7-24-24m0 96c0-13.3 10.7-24 24-24 83.9 0 152 68.1 152 152 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-57.4-46.6-104-104-104-13.3 0-24-10.7-24-24m0 120a32 32 0 1 1 64 0 32 32 0 1 1-64 0"></path></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/astavonin/glass-to-glass" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "toc.follow", "navigation.sections", "navigation.tabs", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
