@@ -55,10 +55,12 @@ extra:
 
 nav:
   - Home: index.md
+  - Blog: blog/index.md
   - Frame Capture:
     - part01/index.md
     - Cross-Compiling Rust for Raspberry Pi: part01/01-rust-on-pi.md
     - Integration Testing for Linux Video Pipelines: part01/02-emulation-and-video-testing.md
+    - Zero-Copy Capture Engine — CaptureSession and Stable FPS: part01/03-capture-session.md
   - Appendix:
     - appendix/index.md
     - A1 — Camera Sensor Fundamentals: appendix/A1-camera-sensor-fundamentals.md
@@ -67,6 +69,7 @@ markdown_extensions:
   - toc:
       permalink: true
   - admonition
+  - footnotes
   - pymdownx.highlight
   - pymdownx.superfences
   - pymdownx.inlinehilite
