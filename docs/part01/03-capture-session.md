@@ -8,7 +8,7 @@ Companion repo: [`pi-cam-capture`](https://github.com/astavonin/pi-cam-capture) 
 
 ## The allocation problem
 
-The V4L2 mmap buffer lifecycle is textbook: `VIDIOC_REQBUFS` allocates a ring, `VIDIOC_QBUF` queues each empty buffer, `VIDIOC_STREAMON` starts capture, `VIDIOC_DQBUF` blocks until the kernel fills the next one, and `VIDIOC_QBUF` puts it back on the ring. The `v4l` crate collapses the whole state machine into `Stream::next()`, which returns `(&[u8], Metadata)`, a *borrow* into the mmap region, and re-queues the previous buffer on the next call.
+The V4L2 mmap buffer lifecycle is textbook: `VIDIOC_REQBUFS` allocates a ring, `VIDIOC_QBUF` queues each empty buffer, `VIDIOC_STREAMON` starts capture, `VIDIOC_DQBUF` blocks until the kernel fills the next one, and `VIDIOC_QBUF` puts it back on the ring. The `v4l` crate collapses the whole state machine into `Stream::next()`, which returns `Result<(&[u8], &Metadata)>`, a pair of borrows into the mmap region, and re-queues the previous buffer on the next call.
 
 The naive path is:
 
@@ -37,6 +37,24 @@ fn next_frame(&mut self) -> Result<Frame> {
 That `buf.to_vec()` is the whole cost model of the loop. At 1080p YUYV (4 147 200 bytes/frame) × 30 fps it is 124 MB/s of allocations returned to the allocator one frame later. Zero-copy here means: return the borrow, not the copy. The caller reads the mmap region directly, and the borrow is invalidated (statically) before the next `DQBUF`.
 
 The rest of the article is about how to expose that borrow without either `unsafe` or a self-referential struct.
+
+## mmap vs DMABUF
+
+V4L2 offers three memory models: `mmap`, `userptr`, and `DMABUF` (`V4L2_MEMORY_DMABUF`). DMABUF is the interesting one for anything that wants to move pixels between devices without paying for a CPU copy.
+
+With DMABUF the kernel allocates a DMA-coherent buffer and returns a file descriptor. Any device that speaks the DMABUF protocol (a hardware encoder, a compositor, an ISP, a discrete accelerator) can import that fd and DMA-read the buffer directly. The pixels never touch the CPU.
+
+The classic win is a camera-to-encoder pipeline where the encoder is a hardware block. On an RK3588, the RKCIF captures MIPI-CSI2 into a DMABUF, the RKISP3 runs debayer and 3A on the same buffer, and the fd is imported by RKVENC (the H.264/H.265 encoder block) via MPP. At 4K30 NV12, that is roughly 370 MB/s of pixel traffic that stays entirely inside DMA. Most SoCs with a dedicated hardware encoder work the same way.
+
+![Hardware encoder path: sensor to RKCIF to RKISP to RKVENC stays in DMA, only compressed bitstream reaches CPU](img/03-hw-encoder-path.png)
+
+The Pi 5 is on the wrong side of that argument. Broadcom removed the hardware H.264 encoder when they moved to BCM2712, and there is no replacement. Every g2g Pi 5 pipeline ends up in x264 or x265 on the CPU, and software encoders need cache-hot pixels in userspace regardless of what the capture layer chose. DMABUF still helps the camera-to-display path (KMS/DRM can import) and could help camera-to-accelerator paths — the Hailo AI HAT connects via PCIe and HailoRT 4.x is adding DMABUF import support — but for the transport chain g2g targets, none of that changes the fact that the encoder consumer sits on the CPU.
+
+![Pi 5 software encoder path: pixels must cross into userspace at mmap because x264 or x265 runs on CPU](img/03-pi5-cpu-crossing.png)
+
+That reduces the mmap-vs-DMABUF choice at the capture layer to two arguments in favour of mmap. First, the `v4l` crate exposes mmap and userptr streaming, not DMABUF; adding DMABUF would mean raw ioctls or a different driver interface. Second, this stage is single-consumer capture: one reader drains the ring, does no inter-device handoff, and hands the pixels straight to whatever runs next in the same process. mmap is the right tool for that.
+
+DMABUF becomes relevant on Pi 5 in the libcamera backend (article 09) where the camera path can hand frames to the compositor without a CPU round-trip. When that lands, `BorrowedCaptureStream` will need a companion for fd-based handoff; the current trait returning `FrameRef<'_>` with a `&[u8]` is specifically the mmap shape.
 
 ## The guard pattern
 
@@ -246,6 +264,7 @@ where
     /// The returned [`FrameRef`] borrows from this streaming guard, so another
     /// frame cannot be captured until the returned value is dropped.
     /// May also block to enforce the configured frame rate; see `target_frame_interval`.
+    // ...
     #[allow(clippy::same_name_method)]
     pub fn next_frame_ref(&mut self) -> Result<FrameRef<'_>> {
         self.pace_next_frame();
