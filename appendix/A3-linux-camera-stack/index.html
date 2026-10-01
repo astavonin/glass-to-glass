@@ -1,0 +1,1725 @@
+<!DOCTYPE html><html lang="en" class="no-js"><head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A practical reference for building glass-to-glass video pipelines on constrained hardware. This site complements the code by explaining design choices, failure modes, and observed behavior across the system.">
+      
+      
+      
+        <link rel="canonical" href="https://gtog.dev/appendix/A3-linux-camera-stack/">
+      
+      
+        <link rel="prev" href="../A1-camera-sensor-fundamentals/">
+      
+      
+      
+        
+      
+      
+        <link rel="alternate" type="application/rss+xml" title="RSS feed" href="../../feed_rss_created.xml">
+        <link rel="alternate" type="application/rss+xml" title="RSS feed of updated content" href="../../feed_rss_updated.xml">
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>A3 — The Linux Camera Stack - Glass-to-Glass Video Pipeline</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+  
+  
+  
+  
+  <style>:root{--md-annotation-icon:url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20d%3D%22M17%2013h-4v4h-2v-4H7v-2h4V7h2v4h4m-5-9A10%2010%200%200%200%202%2012a10%2010%200%200%200%2010%2010%2010%2010%200%200%200%2010-10A10%2010%200%200%200%2012%202%22/%3E%3C/svg%3E');}</style>
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+  
+  
+
+<script id="__analytics">function __md_analytics(){function e(){dataLayer.push(arguments)}window.dataLayer=window.dataLayer||[],e("js",new Date),e("config","G-8XBZY8WGLD"),document.addEventListener("DOMContentLoaded",(function(){document.forms.search&&document.forms.search.query.addEventListener("blur",(function(){this.value&&e("event","search",{search_term:this.value})}));document$.subscribe((function(){var t=document.forms.feedback;if(void 0!==t)for(var a of t.querySelectorAll("[type=submit]"))a.addEventListener("click",(function(a){a.preventDefault();var n=document.location.pathname,d=this.getAttribute("data-md-value");e("event","feedback",{page:n,data:d}),t.firstElementChild.disabled=!0;var r=t.querySelector(".md-feedback__note [data-md-value='"+d+"']");r&&(r.hidden=!1)})),t.hidden=!1})),location$.subscribe((function(t){e("config","G-8XBZY8WGLD",{page_path:t.pathname})}))}));var t=document.createElement("script");t.async=!0,t.src="https://www.googletagmanager.com/gtag/js?id=G-8XBZY8WGLD",document.getElementById("__analytics").insertAdjacentElement("afterEnd",t)}</script>
+  
+    <script>"undefined"!=typeof __md_analytics&&__md_analytics()</script>
+  
+
+    
+    
+  <link href="../../assets/stylesheets/glightbox.min.css" rel="stylesheet"><script src="../../assets/javascripts/glightbox.min.js"></script><style id="glightbox-style">
+            html.glightbox-open { overflow: initial; height: 100%; }
+            .gslide-title { margin-top: 0px; user-select: text; }
+            .gslide-desc { color: #666; user-select: text; }
+            .gslide-image img { background: white; }
+            .gscrollbar-fixer { padding-right: 15px; }
+            .gdesc-inner { font-size: 0.75rem; }
+            body[data-md-color-scheme="slate"] .gdesc-inner { background: var(--md-default-bg-color); }
+            body[data-md-color-scheme="slate"] .gslide-title { color: var(--md-default-fg-color); }
+            body[data-md-color-scheme="slate"] .gslide-desc { color: var(--md-default-fg-color); }
+        </style></head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#a3-the-linux-camera-stack" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Glass-to-Glass Video Pipeline" class="md-header__button md-logo" aria-label="Glass-to-Glass Video Pipeline" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Glass-to-Glass Video Pipeline
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              A3 — The Linux Camera Stack
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to light mode" type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to dark mode" type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo" aria-label="Switch to system preference" type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden="">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"></path></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required="">
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix="">
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/astavonin/glass-to-glass" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../blog/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Blog
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../part01/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Frame Capture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Appendix
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Glass-to-Glass Video Pipeline" class="md-nav__button md-logo" aria-label="Glass-to-Glass Video Pipeline" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+
+    </a>
+    Glass-to-Glass Video Pipeline
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/astavonin/glass-to-glass" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix="">
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    
+  
+  
+    <li class="md-nav__item">
+      <a href="../../blog/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Blog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3">
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../part01/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Frame Capture
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_3" id="__nav_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Frame Capture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix="">
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/01-rust-on-pi/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Cross-Compiling Rust for Raspberry Pi
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/02-emulation-and-video-testing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Integration Testing for Linux Video Pipelines
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../part01/03-capture-session/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Zero-Copy Capture Engine — CaptureSession and Stable FPS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked="">
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Appendix
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_4" id="__nav_4_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Appendix
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix="">
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../A1-camera-sensor-fundamentals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A1 — Camera Sensor Fundamentals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A3 — The Linux Camera Stack
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    A3 — The Linux Camera Stack
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+      
+        <li class="md-nav__item">
+  <a href="#what-this-page-is" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this page is
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-actually-on-the-board" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is actually on the board
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="What is actually on the board">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#three-kinds-of-device-node-and-only-one-of-them-is-familiar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Three kinds of device node, and only one of them is familiar
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-two-cameras-produce-thirty-three-video-nodes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why two cameras produce thirty-three video nodes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-numbering-is-not-the-map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The numbering is not the map
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-capability-bits-decide-the-code-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The capability bits decide the code path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#two-routes-out-of-the-camera" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Two routes out of the camera
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#wiring-one-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Wiring one up
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#when-it-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When it fails
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reading-the-buffer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reading the buffer
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#you-have-raw-frames-now-what" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        You have raw frames. Now what?
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#why-libcamera-works-when-your-code-does-not" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why libcamera works when your code does not
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#glossary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Glossary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-was-measured-on" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this was measured on
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-this-page-does-not-establish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this page does not establish
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#further-reading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Further Reading
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="a3-the-linux-camera-stack">A3: The Linux Camera Stack<a class="headerlink" href="#a3-the-linux-camera-stack" title="Permanent link">¶</a></h1>
+<p>V4L2 device nodes, capability bits, the Media Controller graph, stride and buffer ownership, and the block topology of the Pi 5 capture path.</p>
+<blockquote>
+<p><strong>Platform note:</strong> Everything here is measured on one Raspberry Pi 5 running one kernel, with the exact versions listed at the end. Most of what follows is a number, and numbers age. The shapes generalise. The node numbers absolutely do not.</p>
+</blockquote>
+<hr>
+<h2 id="what-this-page-is">What this page is<a class="headerlink" href="#what-this-page-is" title="Permanent link">¶</a></h2>
+<p>Every frame this book captures arrives through V4L2, and V4L2 has a vocabulary the capture code uses without stopping to define it. This page is where it gets defined.</p>
+<p>It sits between two other appendices. A1 is underneath it, at the sensor: Bayer order, bit depth, packed MIPI formats, sensor modes. Nothing here restates that. A5 will sit above it, at controls and the 3A loops. This page covers what is in between, which is the kernel's side of the boundary: the ioctl surface, the Media Controller graph, and the specific block topology of one Raspberry Pi.</p>
+<p>Here is the failure that sends people looking for a page like this:</p>
+<div class="highlight"><pre><span></span><code>$ v4l2-ctl -d /dev/video0 --set-fmt-video=width=1920,height=1080
+$ v4l2-ctl -d /dev/video0 --get-fmt-video
+    Width/Height      : 1920/1080
+
+$ v4l2-ctl -d /dev/video0 --stream-mmap --stream-count=1
+VIDIOC_STREAMON returned -1 (Invalid argument)
+
+$ dmesg | tail -1
+rp1-cfe 1f00128000.csi: csi2_ch0 node link is not enabled.
+</code></pre></div>
+<p>Setting the format worked. Reading it back worked, geometry unchanged. Only <code>STREAMON</code> fails, with <code>EINVAL</code> and a kernel message naming something most V4L2 tutorials never mention.</p>
+<p>Nothing you did was wrong. The node exists, the format is supported, and the ioctl order matches every V4L2 capture example written in the last fifteen years.</p>
+<p>What's missing is a step those examples don't have, and the reason they don't have it is that they assume a device with one path through it. One source, one destination, nothing to choose between. On hardware shaped like that, opening the node and setting a format really is the whole job, and V4L2's original model fits it exactly.</p>
+<p>The CSI-2 capture path is not shaped like that. Each of the Pi 5's two camera ports presents eight video nodes, because a CSI-2 receiver has more than one route out of it.</p>
+<p>Nothing in the request you made says which of those routes you meant. So the kernel connects none of them, and it does that by default rather than as a failure: at boot the only live connections on the graph run from the sensor to the receiver, and every route onward from there is off. The node you opened is a real device, correctly configured, wired to nothing.</p>
+<p>That is a property of this path and not of the board, which is the first thing worth internalising: the ISP behind this receiver needs no such setup, and neither does a USB webcam in the same machine. One capability bit tells you which kind you are holding.</p>
+<p>If you only came here to unblock that, the fix is four commands and they are in "Wiring one up" below. The rest of this page is why they are needed, and why nothing before <code>STREAMON</code> complained.</p>
+<p>What sits in that gap is independent enough that you can understand one part and still be stuck on the rest. There is the ioctl surface: what you can ask a V4L2 device, and which questions this driver refuses to answer at all. There is the Media Controller model, where the enabled-link problem lives, and which most V4L2 documentation treats as an advanced topic you can skip. And there is the specific hardware in front of you, which on a Pi 5 means two CSI-2 receiver instances inside a PCIe-attached I/O chip, a PiSP front end sharing a media graph with them, and a back end on the SoC that does memory-to-memory work while failing the kernel's own definition of a memory-to-memory device.</p>
+<p>Most of what cost me time was in the third category and looked like it was in the first.</p>
+<hr>
+<h2 id="what-is-actually-on-the-board">What is actually on the board<a class="headerlink" href="#what-is-actually-on-the-board" title="Permanent link">¶</a></h2>
+<p>Start where every V4L2 walkthrough starts. On this board the answer is longer than a walkthrough has any use for.</p>
+<div class="highlight"><pre><span></span><code>v4l2-ctl<span class="w"> </span>--list-devices
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>pispbe (platform:1000880000.pisp_be):
+    /dev/video20
+    /dev/video21
+          ⋮        (through /dev/video35)
+    /dev/media0
+    /dev/media4
+
+rp1-cfe (platform:1f00110000.csi):
+    /dev/video8
+          ⋮        (through /dev/video15)
+    /dev/media1
+
+rp1-cfe (platform:1f00128000.csi):
+    /dev/video0
+          ⋮        (through /dev/video7)
+    /dev/media2
+
+rpi-hevc-dec (platform:rpi-hevc-dec):
+    /dev/video19
+    /dev/media3
+</code></pre></div>
+<p>Four blocks, node lines elided inside each.</p>
+<p>Two CSI cameras are attached and nothing is plugged into USB, and on that configuration the board presents 33 video nodes. Almost none of them is the one you want, and nothing in that listing tells you which is.</p>
+<p>If that printed nothing, it is permissions, and the fix is one line: put yourself in the <code>video</code> group. Every node on the camera path is owned <code>root:video</code> with mode <code>0660</code>, video nodes and media nodes and subdevs and the dma-heaps alike, so there is nothing to <code>chmod</code>. That one group is also enough on its own. A process running as an ordinary user with <code>video</code> as its only supplementary group drives a libcamera capture end to end, so nothing on the capture path needs <code>render</code> or <code>sudo</code>; strip the group and the same process cannot even open <code>/dev/video0</code>.</p>
+<h3 id="three-kinds-of-device-node-and-only-one-of-them-is-familiar">Three kinds of device node, and only one of them is familiar<a class="headerlink" href="#three-kinds-of-device-node-and-only-one-of-them-is-familiar" title="Permanent link">¶</a></h3>
+<p>The listing above mixes two kinds of path, and there is a third it does not print at all.</p>
+<p>Video nodes at <code>/dev/video*</code> are the ones capture code talks to. You set a format on one, queue memory to it, and frames come back. That is the whole of the API a single-camera capture loop needs.</p>
+<p>Subdev nodes at <code>/dev/v4l-subdev*</code> are new here. They expose the internal blocks: the sensor itself, the CSI-2 receiver, the PiSP front end, and on a module that has one, the focus actuator. A subdev has no buffer queue. What it has is pads, each carrying its own format, and controls. The sensor's geometry and its exposure controls live on a subdev, not on the video node you capture from.</p>
+<p>Media nodes at <code>/dev/media*</code> are also new, and they are the ones that answer the question the failure above raised. A media node carries the graph: which entities exist, which pads each has, and which pads are connected to which. It is the only place the connection state lives.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a3-node-kinds.png" data-desc-position="bottom"><img alt="Three questions, three device nodes, three ioctl families: the media node answers what is connected to what, the subdev node answers what geometry and controls the sensor has, the video node delivers pixels" src="../img/a3-node-kinds.png"></a></p>
+<p>Each question goes to its own device node, and the three ioctl families do not overlap. A plain capture loop lives in the bottom lane and nowhere else. The failure this page opened with is a question in the top lane, asked of a device in the bottom lane, which is why the answer came back as an unhelpful <code>EINVAL</code>.</p>
+<p>One <code>rp1-cfe</code> port is one media node describing one graph, containing the sensor subdev, the <code>csi2</code> subdev, the <code>pisp-fe</code> subdev, and eight video-node entities. <code>media-ctl -p</code> prints the whole thing, but which <code>/dev/media*</code> to hand it is exactly the question the next section says never to answer with a constant, so find it by what is inside it:</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span>m<span class="w"> </span><span class="k">in</span><span class="w"> </span>/dev/media*<span class="p">;</span><span class="w"> </span><span class="k">do</span>
+<span class="w">  </span>media-ctl<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="nv">$m</span><span class="s2">"</span><span class="w"> </span>-p<span class="w"> </span><span class="m">2</span>&gt;/dev/null<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-q<span class="w"> </span><span class="s1">'"imx477'</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="nv">M</span><span class="o">=</span><span class="s2">"</span><span class="nv">$m</span><span class="s2">"</span>
+<span class="k">done</span>
+media-ctl<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="nv">$M</span><span class="s2">"</span><span class="w"> </span>-p
+</code></pre></div>
+<p>That <code>$M</code> is the one every later command on this page uses.</p>
+<h3 id="why-two-cameras-produce-thirty-three-video-nodes">Why two cameras produce thirty-three video nodes<a class="headerlink" href="#why-two-cameras-produce-thirty-three-video-nodes" title="Permanent link">¶</a></h3>
+<p>The listing prints four blocks, but it groups by bus address rather than by driver, and only three drivers are behind them.</p>
+<p><code>rp1-cfe</code> drives the Camera Front End, the CSI-2 receiver. One instance sits at each camera port's bus address, and each registers a whole block of video nodes, because a receiver has more than one route out: straight to memory, through the PiSP front end, or off to one of the metadata side channels. Two addresses, two blocks. <code>pispbe</code> drives the PiSP back end, the image signal processor that turns raw sensor output into something a display or an encoder can use, and it registers two independent processing contexts. Both answer to the same bus address, <code>platform:1000880000.pisp_be</code>, so the listing folds them into one block. <code>rpi-hevc-dec</code> is a video decoder with a single node, present here mostly as a contrast case.</p>
+<p>Unfolded, those four blocks are five separate graphs:</p>
+<table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>Hardware</th>
+<th>Video nodes</th>
+<th>Count</th>
+<th>Media nodes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rp1-cfe</code></td>
+<td>CSI-2 receiver, port 1 (<code>1f00128000.csi</code>)</td>
+<td><code>/dev/video0</code>–<code>7</code></td>
+<td>8</td>
+<td>one</td>
+</tr>
+<tr>
+<td><code>rp1-cfe</code></td>
+<td>CSI-2 receiver, port 0 (<code>1f00110000.csi</code>)</td>
+<td><code>/dev/video8</code>–<code>15</code></td>
+<td>8</td>
+<td>one</td>
+</tr>
+<tr>
+<td><code>rpi-hevc-dec</code></td>
+<td>HEVC decoder</td>
+<td><code>/dev/video19</code></td>
+<td>1</td>
+<td>one</td>
+</tr>
+<tr>
+<td><code>pispbe</code></td>
+<td>PiSP back end, first context</td>
+<td><code>/dev/video20</code>–<code>27</code></td>
+<td>8</td>
+<td>one</td>
+</tr>
+<tr>
+<td><code>pispbe</code></td>
+<td>PiSP back end, second context</td>
+<td><code>/dev/video28</code>–<code>35</code></td>
+<td>8</td>
+<td>one</td>
+</tr>
+</tbody>
+</table>
+<p>That is thirty-three video nodes and all five media nodes accounted for, with nothing unlisted hiding behind either count.</p>
+<p>Read the node ranges in that table as one board's boot, not as addresses. They hold for this set of drivers binding in this order, and the next section breaks them with a single USB cable.</p>
+<p>The two <code>pispbe</code> rows are worth dwelling on, because the driver gives you nothing to tell them apart. Same bus address, and the entity names inside both graphs are identical down to the last pad: <code>pispbe-input</code>, <code>pispbe-config</code>, <code>pispbe-output0</code> and the rest appear twice, once per context. The node range is the only discriminator, and the media index it lands on changes across boots.</p>
+<p>None of those counts is a camera count, and the cheapest way to see that is to attach a third camera. Plug a UVC webcam into USB and the board gains two video nodes, not eight: one carrying frames, one carrying UVC metadata. How many nodes a camera produces is a property of the driver behind it, and <code>uvcvideo</code> offers one route where <code>rp1-cfe</code> offers several.</p>
+<p>So a CSI camera is not a device you open. It is a graph with eight capture routes in it. Which of the eight you want, and how you connect a sensor to it, is the rest of this page.</p>
+<hr>
+<h2 id="the-numbering-is-not-the-map">The numbering is not the map<a class="headerlink" href="#the-numbering-is-not-the-map" title="Permanent link">¶</a></h2>
+<p>Here's the trap that costs an afternoon: you write down the node map, you bake it into a test fixture or a config file, you reboot, and half of it has moved.</p>
+<p>The counts hold: 33 video nodes, 5 media nodes and 7 subdev nodes, identical on all three boots that took a full census. What is not stable is which index belongs to which piece of hardware.</p>
+<p>Seven is worth a second look, because it is an odd number on a board with two symmetric camera ports. Six of the seven are the pair you would predict, a <code>csi2</code> and a <code>pisp-fe</code> and a sensor on each port. The seventh is <code>dw9807 10-000c</code>, the voice-coil focus actuator on the imx708 module, and the imx477 graph has nothing corresponding to it. So the two ports do not hold the same number of subdevs, and the reason is which modules are plugged in, not anything about the board. Even the stable counts are only stable for one hardware configuration.</p>
+<p>Across four boots no video-node block moved. Every range in the table above held on all four. The <code>/dev/media*</code> indices are what moved.</p>
+<p>Two of those boots recorded where every media device had landed, six days apart, and that pair is enough to show the problem. Read it by index rather than by device:</p>
+<table>
+<thead>
+<tr>
+<th>Media node</th>
+<th>Boot A</th>
+<th>Boot B</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/dev/media0</code></td>
+<td><code>pispbe</code> context</td>
+<td>imx708 CFE</td>
+</tr>
+<tr>
+<td><code>/dev/media1</code></td>
+<td>imx708 CFE</td>
+<td><code>rpi-hevc-dec</code></td>
+</tr>
+<tr>
+<td><code>/dev/media2</code></td>
+<td>imx477 CFE</td>
+<td>imx477 CFE</td>
+</tr>
+<tr>
+<td><code>/dev/media3</code></td>
+<td><code>rpi-hevc-dec</code></td>
+<td><code>pispbe</code> context</td>
+</tr>
+<tr>
+<td><code>/dev/media4</code></td>
+<td><code>pispbe</code> context</td>
+<td><code>pispbe</code> context</td>
+</tr>
+</tbody>
+</table>
+<p>Three of the five changed hands, and not one went to a device of the same kind. <code>/dev/media0</code> carried an ISP context on Boot A and a camera graph on Boot B. <code>/dev/media3</code> went the other way. Every video-node block, meanwhile, sat exactly where it had been.</p>
+<p>So resolve a media device by driver name, and where two devices share a driver, by the sensor or the node range its graph carries. Pairing a media index with a video index is wrong. Hardcoding either is wrong. Every command in this page resolves media devices by name for exactly this reason.</p>
+<p>The recycling is what makes it worth the trouble. A stale index does not fail loudly. It opens something real and wrong, and the first thing you hear about it is an ioctl that makes no sense on a device you did not mean to be talking to.</p>
+<p>Four boots is where I stopped believing the video-node blocks were stable, and the fifth boot is why. I left a USB webcam plugged in before powering up. <code>uvcvideo</code> bound before either platform driver, took <code>/dev/video0</code> and <code>/dev/video1</code>, and pushed both CFE blocks up by two:</p>
+<table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>Four boots without USB</th>
+<th>One boot with USB present</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rp1-cfe</code> <code>1f00128000.csi</code></td>
+<td><code>/dev/video0</code>–<code>7</code></td>
+<td><code>/dev/video2</code>–<code>9</code></td>
+</tr>
+<tr>
+<td><code>rp1-cfe</code> <code>1f00110000.csi</code></td>
+<td><code>/dev/video8</code>–<code>15</code></td>
+<td><code>/dev/video10</code>–<code>17</code></td>
+</tr>
+<tr>
+<td><code>pispbe</code>, both contexts</td>
+<td><code>/dev/video20</code>–<code>35</code></td>
+<td><code>/dev/video20</code>–<code>35</code></td>
+</tr>
+<tr>
+<td><code>rpi-hevc-dec</code></td>
+<td><code>/dev/video19</code></td>
+<td><code>/dev/video19</code></td>
+</tr>
+</tbody>
+</table>
+<p>Six media nodes on that boot rather than five, because the webcam registers one of its own.</p>
+<p>So the rule is not that video-node numbering is stable. It is that video-node numbering is stable for a fixed set of video drivers binding in a fixed order, and a USB camera left plugged in over a reboot is enough to change both. <code>pispbe</code> and the decoder held because they bind above the range the newcomer took, which is luck rather than a guarantee.</p>
+<p>The practical consequence is worse than it looks, because the displacement is silent and small. Shift by two and <code>/dev/video2</code> is still a real capture node that answers <code>QUERYCAP</code> and accepts a format. It is just the wrong port.</p>
+<p>Entity names and entity IDs do survive a reboot. Every name and every ID in both <code>rp1-cfe</code> graphs and both <code>pispbe</code> contexts matched exactly between those same two boots, while the media indices carrying those graphs moved underneath them. So an entity is a stable handle and a device index is not.</p>
+<p>That doesn't solve the whole problem. Entity names alone will not separate the two <code>pispbe</code> contexts, because both carry the identical name set and the identical ID set. Only the video-node range tells them apart.</p>
+<p>The tooling has the same problem you do. Run <code>v4l2-ctl --info</code> across every node and one <code>pispbe</code> context comes back with a topology lookup failure ahead of its capability block:</p>
+<div class="highlight"><pre><span></span><code>=== /dev/video20 ===
+FAIL: could not find device 81:0 in topology
+    Device Caps      : 0x04202000
+=== /dev/video21 ===
+FAIL: could not find device 81:1 in topology
+    Device Caps      : 0x04202000
+</code></pre></div>
+<p>Eight nodes of one context, all failing; none of the other. The capability decode is unaffected, so this is cosmetic if all you want is <code>Device Caps</code>, and fatal if you wanted the <code>Interface Info</code> and <code>Entity Info</code> blocks, which are simply absent. Both contexts report the same <code>Bus info</code> string, <code>platform:1000880000.pisp_be</code>, which is presumably how the lookup gets confused. On the two boots where I captured the sweep, the missed range was <code>/dev/video20</code>–<code>27</code> both times, sitting on different media indices, so the miss follows the node range rather than the media index. Whether <em>which</em> context gets missed varies across boots, I can't tell you: I have one working-notes observation of the other range being missed and I didn't keep its output.</p>
+<hr>
+<h2 id="the-capability-bits-decide-the-code-path">The capability bits decide the code path<a class="headerlink" href="#the-capability-bits-decide-the-code-path" title="Permanent link">¶</a></h2>
+<p><code>VIDIOC_QUERYCAP</code> is the first ioctl worth calling and the one most examples skip, because on a webcam the answer is boring. On this board it decides three separate branches in your code.</p>
+<div class="highlight"><pre><span></span><code><span class="k">for</span><span class="w"> </span>d<span class="w"> </span><span class="k">in</span><span class="w"> </span>/dev/video*<span class="p">;</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">"=== </span><span class="nv">$d</span><span class="s2"> ==="</span><span class="p">;</span><span class="w"> </span>v4l2-ctl<span class="w"> </span>-d<span class="w"> </span><span class="nv">$d</span><span class="w"> </span>--info<span class="w"> </span><span class="m">2</span>&gt;<span class="p">&amp;</span><span class="m">1</span><span class="p">;</span><span class="w"> </span><span class="k">done</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-E<span class="w"> </span><span class="s2">"^===|Device Caps|FAIL"</span>
+</code></pre></div>
+<p>Five representative values out of the sweep, and a sixth from a USB webcam attached afterwards:</p>
+<table>
+<thead>
+<tr>
+<th>Node</th>
+<th><code>device_caps</code></th>
+<th>Driver</th>
+<th>Shape</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/dev/video0</code></td>
+<td><code>0x24a00001</code></td>
+<td><code>rp1-cfe</code></td>
+<td>image: single-plane, <code>I/O MC</code></td>
+</tr>
+<tr>
+<td><code>/dev/video4</code></td>
+<td><code>0x24200001</code></td>
+<td><code>rp1-cfe</code></td>
+<td>front-end image: single-plane, <code>I/O MC</code></td>
+</tr>
+<tr>
+<td><code>/dev/video19</code></td>
+<td><code>0x04204000</code></td>
+<td><code>rpi-hevc-dec</code></td>
+<td>multiplanar, M2M</td>
+</tr>
+<tr>
+<td><code>/dev/video23</code></td>
+<td><code>0x04201000</code></td>
+<td><code>pispbe</code></td>
+<td>image: multiplanar capture</td>
+</tr>
+<tr>
+<td><code>/dev/video27</code></td>
+<td><code>0x0c200000</code></td>
+<td><code>pispbe</code></td>
+<td>config: Metadata Output, no <code>_MPLANE</code></td>
+</tr>
+<tr>
+<td>the C920's image node</td>
+<td><code>0x04200001</code></td>
+<td><code>uvcvideo</code></td>
+<td>image: single-plane, nothing else set</td>
+</tr>
+</tbody>
+</table>
+<p>The webcam is the one to anchor on. <code>v4l2-ctl</code> decodes <code>0x04200001</code> as <code>Video Capture, Streaming, Extended Pix Format</code> and nothing else: the shape every V4L2 tutorial assumes, and the shape none of the five nodes above it has. Every complication on this page is a bit that row does not set.</p>
+<p>Two bits in that word are easy to misread. The <code>0x00200000</code> is <code>V4L2_CAP_EXT_PIX_FORMAT</code>, not <code>V4L2_CAP_DEVICE_CAPS</code>, which is <code>0x80000000</code> and appears only in the <code>Capabilities</code> word, never in <code>Device Caps</code>. And the difference between <code>/dev/video0</code>'s <code>0x24a00001</code> and <code>/dev/video4</code>'s <code>0x24200001</code> is a single bit, <code>V4L2_CAP_META_CAPTURE</code> at <code>0x00800000</code>: the bypass node can deliver metadata as well as images, the front-end image node cannot.</p>
+<p>Those node numbers are from one boot, and the previous section is why they are not identifiers. The webcam's row carries no number for the same reason, only sharper: where a UVC node lands depends on whether the camera was plugged in before power-up, so any number I gave you would be wrong half the time. Read the table by driver and shape, and resolve the nodes on your own board.</p>
+<p>The three branches are independent. <code>QUERYCAP</code> is read once and answers all of them; none feeds the next.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a3-capability-bits.png" data-desc-position="bottom"><img alt="One VIDIOC_QUERYCAP feeding three independent branches: plane shape, the I/O MC bit, and the M2M bit, each decoded against the real device_caps values on this board" src="../img/a3-capability-bits.png"></a></p>
+<p>Red is where the answer costs you work: build a graph, use the multiplanar struct, handle a metadata-only node, drive two queues. Teal is where there's nothing to do. That split doesn't line up with any one bit, which is the point.</p>
+<p>Plane shape needs a word of definition first. A plane is one memory region of a frame. A packed format like <code>YUYV</code> interleaves everything into a single region and needs one. A format that separates luma from chroma can put each in its own region, and the kernel allows those regions to sit in separate buffers or even separate memory nodes. V4L2 carries two parallel APIs for the two cases: single-plane uses <code>V4L2_BUF_TYPE_VIDEO_CAPTURE</code> with <code>struct v4l2_pix_format</code>, multiplanar uses the <code>_MPLANE</code> buffer types with <code>struct v4l2_pix_format_mplane</code> and its per-plane array. They are not interchangeable, and the node decides which one you write against.</p>
+<p><code>rp1-cfe</code> image nodes are single-plane. <code>pispbe</code> image nodes are multiplanar. And the two questions come apart: <code>NV12</code> on a <code>pispbe</code> node reports <code>Number of planes: 1</code> despite the <code>_MPLANE</code> buffer type, because the contiguous and non-contiguous layouts are different FourCCs and <code>NM12</code> is the two-plane one. Size your plane array from <code>num_planes</code>, never from the buffer type. Code that hardcodes <code>_MPLANE</code> because "it's the Pi camera" breaks on <code>rp1-cfe</code>, and code that assumes <code>_MPLANE</code> for everything <code>pispbe</code> breaks on the two config nodes, <code>/dev/video27</code> and <code>/dev/video35</code>, which read <code>0x0c200000</code>: Metadata Output, no <code>_MPLANE</code> bit at all. Not uniform within one driver, let alone across the board.</p>
+<p><code>V4L2_CAP_IO_MC</code>, bit <code>0x20000000</code>, is what <code>v4l2-ctl</code> prints as <code>I/O MC</code>. The kernel documentation defines it as: there is only one input and/or output seen from userspace, and the whole topology configuration, including which I/O entity is routed to that input or output, is configured by userspace through the Media Controller.<sup id="fnref:querycap"><a class="footnote-ref" href="#fn:querycap">1</a></sup> In other words the bit is the driver telling you that opening the node is not enough and you have a graph to build.</p>
+<p>It's set on every node of both <code>rp1-cfe</code> instances and on no <code>pispbe</code> node, which is the entire reason the opening failure happens on the capture front end and never on the ISP back end.</p>
+<p>A third case makes the bit predictive rather than merely descriptive. Plug a UVC webcam into the same board and it reports <code>0x04200001</code>, without the bit, and streams with no <code>media-ctl</code> setup at all. It is not that the webcam has no graph: <code>uvcvideo</code> registers one, with a camera terminal, a processing unit, extension units and an output node. Every link in it is <code>ENABLED,IMMUTABLE</code>. So the discriminator is not whether a device has a media graph, nor how many entities are in it, but whether the driver hands you any link you are allowed to change. <code>I/O MC</code> is the driver answering that question before you touch the graph.</p>
+<p>The M2M bit is <code>0x4000</code>, <code>V4L2_CAP_VIDEO_M2M_MPLANE</code>, and exactly one node sets it: <code>/dev/video19</code>, the decoder. The other thirty-two in the sweep do not, and neither does the webcam. I'll come back to why that's more interesting than it sounds, because <code>pispbe</code> demonstrably moves frames from memory to memory and transforms them on the way, and still doesn't set the bit.</p>
+<hr>
+<h2 id="two-routes-out-of-the-camera">Two routes out of the camera<a class="headerlink" href="#two-routes-out-of-the-camera" title="Permanent link">¶</a></h2>
+<p>The capability sweep left a question open. Why does one driver demand a Media Controller setup while the other offers nothing to configure? The answer is that <code>rp1-cfe</code> and <code>pispbe</code> are not two flavours of the same block. They are different hardware, doing different jobs, and they are not even on the same side of a PCIe link.</p>
+<p>The live device tree says so plainly. Its root <code>compatible</code> list reads <code>raspberrypi,5-model-b</code> then <code>brcm,bcm2712</code>, naming the board model and the SoC on it, and the two capture blocks hang off different buses:</p>
+<div class="highlight"><pre><span></span><code>pispbe   → /axi/pisp_be@880000
+rp1-cfe  → /axi/pcie@1000120000/rp1/csi@128000
+</code></pre></div>
+<p><code>pispbe</code> is on the SoC. <code>rp1-cfe</code> is inside RP1, the I/O controller, behind the PCIe bridge. Two hardware blocks, two drivers, two separate platform devices at separate bus addresses, and a PCIe link between them.</p>
+<p>The webcam cannot appear in that listing at all, and that is the third case, not an omission. Those paths are <code>of_node</code> links, which exist only for devices the device tree describes. A USB camera is not one: <code>uvcvideo</code> binds to an interface enumerated on the bus at runtime, so there is no node to point at. Three cameras on one machine, reached by three different discovery mechanisms, which is a large part of why one of them needs <code>media-ctl</code> and the others do not.</p>
+<p>That is checkable per node rather than inferred. <code>/sys/class/video4linux/&lt;node&gt;/device/of_node</code> exists for all three platform drivers and resolves to the paths above, with the decoder at <code>/axi/codec@800000</code>, SoC-side alongside <code>pispbe</code>. On the webcam's node the path is simply absent.</p>
+<p>The CSI-2 receive side is the Camera Front End, driven by <code>rp1_cfe</code>, one instance per port, and each instance gets its own media graph and its own eight video nodes. <code>media-ctl -p</code> on a graph prints every entity in it together with the <code>/dev/video*</code> node that entity owns, which is how the map below was taken and how you would take it on your own board.</p>
+<p>Both ports lay out identically, so the table reads as offsets from the port's first node rather than as the absolute numbers <code>media-ctl</code> prints:</p>
+<table>
+<thead>
+<tr>
+<th>Offset</th>
+<th>Node</th>
+<th>Kind</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>+0</code></td>
+<td><code>csi2_ch0</code></td>
+<td>image capture, bypasses the front end</td>
+</tr>
+<tr>
+<td><code>+1</code></td>
+<td><code>embedded</code></td>
+<td>metadata capture</td>
+</tr>
+<tr>
+<td><code>+2</code>, <code>+3</code></td>
+<td><code>csi2_ch2</code>, <code>csi2_ch3</code></td>
+<td>image capture, further <code>csi2</code> source pads</td>
+</tr>
+<tr>
+<td><code>+4</code>, <code>+5</code></td>
+<td><code>fe_image0</code>, <code>fe_image1</code></td>
+<td>front-end image capture</td>
+</tr>
+<tr>
+<td><code>+6</code></td>
+<td><code>fe_stats</code></td>
+<td>metadata capture</td>
+</tr>
+<tr>
+<td><code>+7</code></td>
+<td><code>fe_config</code></td>
+<td>metadata <strong>output</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>csi2_ch*</code> nodes take frames straight to memory. The <code>fe_image*</code> nodes take them through <code>pisp-fe</code>, the PiSP front end, which is a subdev entity sitting inline inside the same graph. <code>fe_config</code> is the odd one: a metadata <em>output</em> node, meaning the application writes to it rather than reading from it, because the front end needs a configuration buffer pushed in before it will do anything.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a3-capture-topology.png" data-desc-position="bottom"><img alt="The capture path across two chips: sensor into csi2 inside RP1, then either the bypass node or the PiSP front end, and the PiSP back end on the BCM2712 side reached by a DMA-BUF descriptor" src="../img/a3-capture-topology.png"></a></p>
+<p>Grey is metadata, teal is image data. That's the distinction people get wrong, because <code>fe_config</code> sits in a block of eight nodes that look interchangeable from the numbering and isn't one of them.</p>
+<p>Which route you take decides what you can get out. A front-end image node offers 10 formats, all Bayer or mono: no YUV, no RGB. The back end's nodes offer 50, including YUV at three subsamplings. So debayering happens in the back end, and if you want anything but raw off the front-end route, you cannot have it there. How the back end does it, stage by stage, is covered in A2 on the ISP pipeline, planned.</p>
+<p>The back end sits outside this graph entirely. Each <code>pispbe</code> context reads a finished frame out of memory through <code>pispbe-input</code>, takes a configuration buffer through <code>pispbe-config</code>, and writes the processed result back through one of its outputs. There are two such contexts, <code>/dev/video20</code>–<code>27</code> and <code>/dev/video28</code>–<code>35</code>. Neither needs any <code>media-ctl</code> work, for reasons the memory-to-memory section gets to.</p>
+<p>That hop between the two blocks is the one worth testing rather than assuming, because it crosses the PCIe boundary. Half of it now works end to end. <code>csi2_ch0</code> captured a real frame, <code>EXPBUF</code> returned a descriptor, and <code>pispbe-input</code> accepted that descriptor at <code>QBUF</code> under <code>V4L2_MEMORY_DMABUF</code> with <code>STREAMON</code> succeeding on the imported queue. The fd is handed across, not copied.</p>
+<p>What that does not establish is a completed processing pass, which needs a valid configuration buffer on <code>pispbe-config</code> and is still open further down this page. So the handoff is verified and the round trip is not.</p>
+<p>One trap on the way there, worth more than the result. The first attempt used <code>pRCC</code> on both sides. <code>pispbe-input</code> does not enumerate it, <code>S_FMT</code> returned 0 having silently substituted <code>YU12</code>, and <code>QBUF</code> then failed <code>EINVAL</code> because the exported buffer was smaller than the substituted format needed. The import works only where both drivers enumerate a common FourCC, <code>RG16</code> here. <code>S_FMT</code> returning zero does not mean it took the format you asked for; read back what you got.</p>
+<hr>
+<h2 id="wiring-one-up">Wiring one up<a class="headerlink" href="#wiring-one-up" title="Permanent link">¶</a></h2>
+<p>This is the section the opening failure was waiting for.</p>
+<p><code>csi2_ch0 node link is not enabled</code> is a complete description of the problem once you know what a link is, and opaque before. An entity is a hardware or software building block. A pad is a data connection endpoint on an entity. A link is a point-to-point connection from a source pad to a sink pad.</p>
+<p>At boot, an <code>rp1-cfe</code> graph has two enabled links, and both run from the sensor to <code>csi2</code>: the image pad to <code>csi2</code> pad 0, and the embedded-data pad to <code>csi2</code> pad 1. Both read <code>ENABLED,IMMUTABLE</code>, so neither can be disabled. Every <code>csi2</code>-to-video-node link and every <code>csi2</code>-to-<code>pisp-fe</code> link is off. Both ports were dumped at boot and agree.</p>
+<p>So the bypass route needs one link enabled and the formats along it made to agree:</p>
+<div class="highlight"><pre><span></span><code>media-ctl<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="nv">$M</span><span class="s2">"</span><span class="w"> </span>-l<span class="w"> </span><span class="s1">'"csi2":4-&gt;"rp1-cfe-csi2_ch0":0[1]'</span>
+media-ctl<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="nv">$M</span><span class="s2">"</span><span class="w"> </span>-V<span class="w"> </span><span class="s1">'"imx477 11-001a":0 [fmt:SRGGB12_1X12/2028x1520 field:none]'</span>
+media-ctl<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="nv">$M</span><span class="s2">"</span><span class="w"> </span>-V<span class="w"> </span><span class="s1">'"csi2":0 [fmt:SRGGB12_1X12/2028x1520 field:none]'</span>
+v4l2-ctl<span class="w"> </span>-d<span class="w"> </span><span class="s2">"</span><span class="nv">$V</span><span class="s2">"</span><span class="w"> </span>--set-fmt-video<span class="o">=</span><span class="nv">width</span><span class="o">=</span><span class="m">2028</span>,height<span class="o">=</span><span class="m">1520</span>,pixelformat<span class="o">=</span>pRCC
+</code></pre></div>
+<p>The <code>media-ctl</code> syntax is <code>"entity":pad</code>, and everything else follows from that. <code>-l</code> operates on a link and takes both ends plus a flag: <code>"csi2":4-&gt;"rp1-cfe-csi2_ch0":0[1]</code> means pad 4 of <code>csi2</code> to pad 0 of the video node, and <code>[1]</code> turns it on. <code>[0]</code> turns it off. <code>-V</code> operates on one pad and gives it a format: a media-bus code, a geometry, and a field order.</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Reaches</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-l ... [1]</code></td>
+<td>the link between <code>csi2</code> pad 4 and the node's pad 0</td>
+<td>enables it; it is off at boot</td>
+</tr>
+<tr>
+<td><code>-V</code> on <code>imx477:0</code></td>
+<td>the sensor's source pad</td>
+<td>sets what the sensor will emit</td>
+</tr>
+<tr>
+<td><code>-V</code> on <code>csi2:0</code></td>
+<td>the receiver's sink pad</td>
+<td>sets what the receiver expects</td>
+</tr>
+<tr>
+<td><code>--set-fmt-video</code></td>
+<td>the video node's own format</td>
+<td>sets what the node will write to memory</td>
+</tr>
+</tbody>
+</table>
+<p>Stop after the three <code>media-ctl</code> calls and you get the opening failure again, wearing a different message. All three return 0. Every pad on the path reads <code>SRGGB12_1X12/2028x1520 field:none</code>. And <code>STREAMON</code> fails:</p>
+<div class="highlight"><pre><span></span><code>VIDIOC_STREAMON returned -1 (Invalid argument)
+rp1-cfe 1f00128000.csi: Wrong width or height 640x480 (remote pad set to 2028x1520)
+rp1-cfe 1f00128000.csi: Failed to start media pipeline: -22
+</code></pre></div>
+<p>The video node was never told anything. It is still sitting at the 640×480 <code>pRAA</code> it had at boot, because a node's format is not a pad format and nothing propagates into it. <code>cfe_video_link_validate()</code> compares the two and refuses the mismatch. So the fourth command is not a convenience, and a pipeline where every pad agrees can still be a pipeline that will not start.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a3-pad-writes.png" data-desc-position="bottom"><img alt="Four pads on the bypass path: two media-ctl writes, propagation from csi2 pad 0 to pad 4, and the video node's own format as the fourth write that cfe_video_link_validate compares" src="../img/a3-pad-writes.png"></a></p>
+<p>Four pads sit on that path and only two get written, because <code>csi2</code> propagates its sink pad to its source pad. That is measured, not assumed: write <code>csi2:0</code> alone and <code>csi2:4</code> moves with it in both media-bus code and geometry, with no command naming pad 4. Propagation is a property of the subdev, not something you perform. An explicit write to pad 4 afterwards does stick, though, and is not clobbered by the propagated value, which is how a pipeline ends up with a 12-bit sink pad and a 16-bit source pad.</p>
+<p>The format to write comes from the sensor, never from the video node. Ask <code>/dev/video0</code> what it takes and it lists 41 formats including <code>YUYV</code> and <code>RGB3</code>, none of which the sensor can produce: that list is the driver's format table, not a capability list for the pipeline the node currently sits in. Ask the sensor subdev with <code>VIDIOC_SUBDEV_ENUM_MBUS_CODE</code> and you get the truth, with one catch, which is that the answer moves. Set both IMX477 flips and the pad enumerates <code>SBGGR12_1X12</code>; clear them and the same pad enumerates <code>SRGGB12_1X12</code>. Bayer order rotates with the flips, so an enumeration cached at startup is wrong the moment you touch them.</p>
+<p>And the third command hides a trap. Drop the <code>field:none</code> token and the pad is left at <code>Any</code>, which mismatches the sensor's <code>None</code>, and that alone fails <code>STREAMON</code>. Two runs differing by that one token, same links and same geometry and same media-bus code: one captures, one does not, and nothing in the command output tells you which you wrote.</p>
+<p>With the graph reduced to the intended path and the formats matched, the node streams: ten frames off <code>csi2_ch0</code> at 2028×1520, 46451200 bytes, which is ten times the <code>sizeimage</code> the node reports.</p>
+<p>The other extreme is on the same board. All sixteen <code>pispbe</code> links read <code>ENABLED,IMMUTABLE</code>, so no configuration is possible and none is needed. That is the <code>I/O MC</code> split from the capability section showing up as the difference between an afternoon and no work at all.</p>
+<hr>
+<h2 id="when-it-fails">When it fails<a class="headerlink" href="#when-it-fails" title="Permanent link">¶</a></h2>
+<p>The failure you should expect is not an error.</p>
+<p>You build the graph, set the formats, <code>STREAMON</code> returns 0, and nothing arrives. Not an error code, not a kernel message, not a partial frame. Four of the five links a real <code>rpicam-hello</code> run leaves behind will do exactly that, and the runs here waited eight seconds before giving up.</p>
+<p>When you do get an errno, check <code>dmesg</code> before anything else, because <code>rp1-cfe</code> is unusually talkative about its own refusals. Four failure paths were triggered deliberately and all four named a reason in the log, including the one that returns <code>EPIPE</code> rather than <code>EINVAL</code>:</p>
+<table>
+<thead>
+<tr>
+<th>What was wrong</th>
+<th>errno</th>
+<th>What the log said</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>link not enabled</td>
+<td><code>EINVAL</code></td>
+<td><code>csi2_ch0 node link is not enabled.</code></td>
+</tr>
+<tr>
+<td>video node's format not set</td>
+<td><code>EINVAL</code></td>
+<td><code>Wrong width or height 640x480 (remote pad set to 2028x1520)</code></td>
+</tr>
+<tr>
+<td><code>field:</code> token omitted from a pad</td>
+<td><code>EPIPE</code></td>
+<td><code>Failed to start media pipeline: -32</code></td>
+</tr>
+<tr>
+<td>front end without its config node</td>
+<td><code>EINVAL</code></td>
+<td><code>FE enabled, but FE_CONFIG node is not</code></td>
+</tr>
+</tbody>
+</table>
+<p>The driver's own messages go through <code>cfe_err()</code> to <code>dev_err()</code> and print whatever the build options are. What does compile away in this kernel, which has <code>CONFIG_DYNAMIC_DEBUG</code> unset, belongs to the media core and <code>v4l2-subdev.c</code>, so the specific link the core rejected can be missing while <code>cfe.c</code> still prints its own line carrying the errno.</p>
+<p>The errno itself does not partition the causes. <code>EINVAL</code> alone covers nine distinct failures, three of them raised by the driver's own guards before the pipeline starts and six by its link validator.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a3-failure-tree.png" data-desc-position="bottom"><img alt="Where VIDIOC_STREAMON can refuse: rp1-cfe's own guards, the media core, and per-link validation, with the errno each one returns" src="../img/a3-failure-tree.png"></a></p>
+<p><code>MUST_CONNECT</code> in that second lane is a pad flag, set on every <code>rp1-cfe</code> node entity's pad, and it means the core will refuse to start a pipeline that leaves the pad unconnected rather than quietly streaming nothing.</p>
+<p><code>EPIPE</code> is never the driver's; it comes from the subdev comparator in the core and reaches you only on a subdev-to-subdev link, so the same mistake on two different links returns two different errnos. And failure does not always wait for <code>STREAMON</code>: the metadata output node fails at <code>QBUF</code>, logging <code>Input config not valid</code>, which has already happened by the time you are watching <code>STREAMON</code>.</p>
+<hr>
+<h2 id="reading-the-buffer">Reading the buffer<a class="headerlink" href="#reading-the-buffer" title="Permanent link">¶</a></h2>
+<p>Stride and buffer ownership both sit between a queued buffer and a correct pixel, and neither one makes the capture loop fail. Get both wrong and the ioctls still return zero.</p>
+<p>Never compute the stride. The driver returns <code>bytesperline</code> and it is not width times bytes per pixel: <code>rp1-cfe</code> aligns every format to 16 bytes, <code>pispbe</code> aligns most formats to 32 and <code>YUYV</code> and <code>UYVY</code> to 64.</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a3-stride-rules.png" data-desc-position="bottom"><img alt="Two stride rules: the derived alignment, which is per driver and per format, and the caller-named floor of align16 of width times bytes per pixel" src="../img/a3-stride-rules.png"></a></p>
+<p><code>RG16</code> and <code>YUYV</code> are both two bytes per pixel, sit on the same node, and take different rules. So the alignment class is not a function of the format's depth and a client cannot compute the stride at all. It has to ask, per format. The format catalogue itself, and the plane-layout arithmetic that goes with it, is A4's subject, planned.</p>
+<p>What makes that advice load-bearing rather than fastidious is what happens when you ignore it. Name a <code>bytesperline</code> yourself and the driver does not clamp you up to the value it would have chosen. It clamps you to a floor of <code>width × bytes-per-pixel</code> rounded up to 16, and on <code>pispbe</code> that floor sits <em>below</em> the derived stride for every format in the 32-byte and 64-byte classes:</p>
+<table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Format</th>
+<th>width</th>
+<th>driver derives</th>
+<th>floor it will accept</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pispbe</code></td>
+<td><code>YUYV</code></td>
+<td>1000</td>
+<td>2048</td>
+<td><strong>2000</strong></td>
+</tr>
+<tr>
+<td><code>pispbe</code></td>
+<td><code>UYVY</code></td>
+<td>100</td>
+<td>256</td>
+<td><strong>208</strong></td>
+</tr>
+<tr>
+<td><code>pispbe</code></td>
+<td><code>NV12</code></td>
+<td>1000</td>
+<td>1024</td>
+<td><strong>1008</strong></td>
+</tr>
+<tr>
+<td><code>pispbe</code></td>
+<td><code>RGB3</code></td>
+<td>260</td>
+<td>800</td>
+<td><strong>784</strong></td>
+</tr>
+<tr>
+<td><code>rp1-cfe</code></td>
+<td><code>YUYV</code></td>
+<td>1000</td>
+<td>2000</td>
+<td>2000</td>
+</tr>
+<tr>
+<td><code>rp1-cfe</code></td>
+<td><code>pRCC</code></td>
+<td>1000</td>
+<td>1504</td>
+<td>1504</td>
+</tr>
+</tbody>
+</table>
+<p>So a client that computes <code>width × bpp</code> and passes it is handed exactly that, and on <code>pispbe</code> it is handed a stride the driver would never have picked. On <code>rp1-cfe</code> the floor and the derived value coincide for every format tested, so the same mistake is invisible there. The undersized stride the "never compute it" rule exists to prevent is reachable, on one of the two drivers, through the API.</p>
+<p>Ownership is the other one. <code>QBUF</code> gives the buffer to the driver, <code>DQBUF</code> takes it back, and between those calls it is not yours. Nothing enforces that but you. <code>DQBUF</code> blocks until a buffer is ready, unless the node was opened <code>O_NONBLOCK</code>, in which case it returns <code>EAGAIN</code> straight away and waiting becomes your job through <code>poll()</code>. What comes back attached to a dequeued buffer, the timestamps and sequence numbers and how to tell a dropped frame from a late one, is A6's subject, planned. For multiplanar formats the mapping is per plane rather than per buffer, so the loop bound is <code>num_planes</code> and not the buffer type.</p>
+<p>On allocation, every platform node here advertises <code>mmap</code> and <code>dmabuf</code> and a cap of 32 buffers, and none advertises <code>userptr</code>. <code>REQBUFS</code> allocates the buffers, and the offset and length you hand to <code>mmap</code> come from <code>VIDIOC_QUERYBUF</code> per buffer, or per plane on a multiplanar node. The webcam is the exception and the only one: its buffer caps read <code>0x17</code> against <code>0x15</code> on every <code>rp1-cfe</code> and <code>pispbe</code> node, and the extra bit is <code>SUPPORTS_USERPTR</code>. <code>REQBUFS</code> with <code>V4L2_MEMORY_USERPTR</code> returns 0 on the C920 and <code>EINVAL</code> on all four platform nodes tested.</p>
+<p>That rules out one mechanism and not the general case. <code>REQBUFS</code> with <code>V4L2_MEMORY_DMABUF</code> returns 0 on every platform node, so you can hand these drivers your own allocation; you just cannot hand them a raw userspace pointer. Export works too and the fd is real: <code>EXPBUF</code> returns zero on both <code>rp1-cfe</code> node classes and both <code>pispbe</code> queue directions, <code>fstat</code> reports a page-aligned size, <code>mmap</code> on the descriptor succeeds. The size is exactly <code>sizeimage</code> rounded up to a page, with no slack, once you use this board's real page size: <code>getconf PAGESIZE</code> reads 16384, not 4096.</p>
+<hr>
+<h2 id="you-have-raw-frames-now-what">You have raw frames. Now what?<a class="headerlink" href="#you-have-raw-frames-now-what" title="Permanent link">¶</a></h2>
+<p>Capture gets you Bayer. Almost nothing downstream wants Bayer, so the next two questions are where to debayer it and where to encode it. This board answers one of them well and the other not at all.</p>
+<p>Debayering is the ISP's job, and that is a memory-to-memory operation: hand a buffer to hardware, get a different one back. So the reasonable move is to find an M2M device and drive it.</p>
+<p>You will not find one. The kernel's definition needs one video node carrying both queues, the <code>V4L2_CAP_VIDEO_M2M</code> bit or its <code>_MPLANE</code> variant, and <code>STREAMON</code> on both;<sup id="fnref:mem2mem"><a class="footnote-ref" href="#fn:mem2mem">2</a></sup> <code>pispbe</code> fails all three while doing the job anyway, splitting its queues across separate nodes, setting no M2M bit, and not linking <code>v4l2_mem2mem</code> at all. The only node on this board that meets the definition is the HEVC decoder, and the codec API it fronts is A8's subject, planned.</p>
+<p>What <code>pispbe</code> does instead needs no Media Controller work whatsoever. Open the input, config and output nodes, <code>S_FMT</code> on all three, allocate, <code>STREAMON</code>, and buffers come back. A frame goes in as compressed Bayer at 2028×1520 and comes out as planar YUV at 640×480, and under libcamera's own configuration every buffer queued in came back out.</p>
+<p>The one thing not shown is a processed frame from a configuration the application built itself. A hand-built run got its input and config buffers back clean and nothing at all on the output: poll timed out at 2000 ms and again at 5000 ms. Whether that config was valid is unresolved, and the driver cannot be asked on this kernel.</p>
+<p>While you are here: <strong>no hardware video encoder is exposed on this board</strong>, scoped to this unit with the overlays it boots. Asking all four queue directions of all 33 nodes returns 989 format entries, of which exactly one is a non-PiSP compressed format, and it sits on the decoder's input queue. Encoding on this board is a software problem.</p>
+<hr>
+<h2 id="why-libcamera-works-when-your-code-does-not">Why libcamera works when your code does not<a class="headerlink" href="#why-libcamera-works-when-your-code-does-not" title="Permanent link">¶</a></h2>
+<p><code>rpicam-hello</code> captures frames. Whatever you built by hand may not. Both drive the same kernel interfaces, so the difference is entirely in what libcamera configures.</p>
+<p>That configuring is not generic code. libcamera carries a pipeline handler per platform, and the one that claims this board is <code>rpi/pisp</code>: it knows the entity names, which links to enable, and what to write on each pad. Bound to the handler is an IPA module, the out-of-process component that runs the 3A algorithms. Two are installed here, <code>ipa_rpi_pisp.so</code> and <code>ipa_rpi_vc4.so</code>, each with a <code>.sign</code> signature file beside it, and the binding is by declared name rather than by filename: <code>IPAModule::match()</code> compares the module's own <code>pipelineName</code> string against the handler's name,<sup id="fnref:ipamatch"><a class="footnote-ref" href="#fn:ipamatch">3</a></sup> so the two modules declare <code>rpi/pisp</code> and <code>rpi/vc4</code> and what the files are called does not enter into it. <code>rpi/vc4</code> would not match on this board in any case, because it looks for media devices named <code>unicam</code> and <code>bcm2835-isp</code>, and neither name is present here.</p>
+<p>So "libcamera works" means a handler written against this exact topology, a tuning file, and an algorithm module bound to it by name. None of that is reachable by writing better V4L2 calls, which is the real reason a hand-built pipeline and <code>rpicam-hello</code> are not competing at the same thing.</p>
+<p>It is also where the frame-rate table lives, because V4L2 does not have one: <code>VIDIOC_ENUM_FRAMEINTERVALS</code>, <code>G_PARM</code> and the subdev interval enumeration all return <code>ENOTTY</code>, read at the ioctl rather than through <code>v4l2-ctl</code>, which reports any failure as end of list. All three are absent, not empty, and the tool cannot show you the difference. libcamera advertises a figure per sensor mode and delivers it, 120.13 fps advertised against 120.12 measured on the IMX708 at 1536×864.</p>
+<p>It takes the front-end route, not the bypass one, and enables five links to do it:</p>
+<p><a class="glightbox" data-type="image" data-width="auto" data-height="auto" href="../img/a3-libcamera-links.png" data-desc-position="bottom"><img alt="The five links libcamera enables against the single link the hand-built bypass enables; the two sets do not overlap" src="../img/a3-libcamera-links.png"></a></p>
+<p>Compare that against the single link "Wiring one up" enables. Five instead of one, and the extra four are the front end, the configuration buffer it needs pushed in before it will do anything, and two metadata side channels. The <code>csi2_ch0</code> bypass node is never used, so the simplest route on this board is also the least travelled. It commits PiSP-compressed Bayer out of the front end and not unpacked raw, and it names its own <code>bytesperline</code> rather than letting the driver derive one.</p>
+<p>Those five links stay enabled after it exits, so a libcamera run before yours changes the state your run starts from. And it writes to your sensor during plain enumeration, before any stream is configured: <code>CameraSensorLegacy::init()</code> clears the flips and pins horizontal blanking to its minimum where the control is writable.<sup id="fnref:sensorlegacy"><a class="footnote-ref" href="#fn:sensorlegacy">4</a></sup> On this board the IMX477's blanking is writable and gets changed; the IMX708's is read-only and does not. Since the flips decide which Bayer codes the sensor enumerates, even a bare <code>rpicam-hello --list-cameras</code> leaves state behind that your own enumeration will read back.</p>
+<hr>
+<h2 id="glossary">Glossary<a class="headerlink" href="#glossary" title="Permanent link">¶</a></h2>
+<p>These definitions bind. An article citing this page for any of them should find the same definition here.</p>
+<p><strong>CFE, Camera Front End.</strong> The CSI-2 receive block inside the RP1 I/O controller, behind the PCIe bridge rather than on the SoC, driven by <code>rp1-cfe</code>. One instance per CSI-2 port, each with its own media graph and its own block of eight video nodes. It receives CSI-2 packets, optionally routes them through the PiSP front end, and writes the result to system memory. Every CFE node sets <code>V4L2_CAP_IO_MC</code>, and CFE image nodes are single-plane. No <code>unicam</code> module is loaded on this board; that <code>unicam</code> is the pre-Pi-5 equivalent of the CFE is unverified here and must not be asserted by an article citing this page.</p>
+<p><strong>PiSP front end (<code>pisp-fe</code>) and back end (<code>pispbe</code>).</strong> Two distinct hardware blocks with two distinct drivers, reported as separate platform devices at separate bus addresses. The front end is a subdev entity with five pads inside the <code>rp1-cfe</code> media graph: it sits inline between the CSI-2 receiver and memory, produces Bayer, PiSP-compressed Bayer or mono plus a statistics buffer, and consumes a configuration buffer. It emits no YUV and no RGB. The back end is a separate platform device on the SoC side, reached through its own media graph, that reads a frame from memory and writes the result back. Its input and output nodes enumerate the same 50-format list, so its input is not restricted to Bayer, and its links are all immutable: there is nothing to configure with <code>media-ctl</code> and nothing that needs it.</p>
+<p><strong>M2M, memory-to-memory device.</strong> The V4L2 device class in which one video node carries both an OUTPUT queue, data the application sends to the hardware, and a CAPTURE queue, processed data it reads back; advertised by <code>V4L2_CAP_VIDEO_M2M</code> or <code>V4L2_CAP_VIDEO_M2M_MPLANE</code>, and started by <code>VIDIOC_STREAMON</code> on both queues. The queue names are from the driver's point of view: OUTPUT is what the application writes. <code>/dev/video19</code> is the only node on this board that is one. <code>pispbe</code> is not, in this sense: it fails all three structural tests while performing the function.</p>
+<p><strong><code>I/O MC</code>, <code>V4L2_CAP_IO_MC</code>.</strong> The capability bit <code>0x20000000</code>, printed by <code>v4l2-ctl --info</code> as <code>I/O MC</code>, declaring that the node presents a single input or output and that the routing behind it is configured by userspace through the Media Controller. Set on every <code>rp1-cfe</code> node and on no <code>pispbe</code> node.</p>
+<p><strong>Stride, and <code>bytesperline</code>.</strong> The distance in bytes between the leftmost pixels of two adjacent lines, as the driver returns it in <code>v4l2_pix_format</code>, and per plane in <code>v4l2_pix_format_mplane</code>'s <code>plane_fmt[]</code> array for the multiplanar API. Stride in this book means that returned value and nothing else, never a value the application computed. A driver may return more than width times bytes per pixel, and both drivers here do.</p>
+<p><strong>Plane, and multiplanar.</strong> A plane is one memory region of a frame, each able to reside in a separate memory buffer or even a separate memory node. Multiplanar describes the API variant: buffer types ending <code>_MPLANE</code>, structures <code>v4l2_pix_format_mplane</code> and <code>v4l2_plane[]</code>. The API variant is a property of the device node; the number of planes is a property of the format. A multiplanar node can report a single-plane format.</p>
+<p><strong>DMA-BUF, against mmap.</strong> mmap streaming maps driver-allocated buffers into the process address space, and the application and driver exchange ownership through <code>VIDIOC_QBUF</code> and <code>VIDIOC_DQBUF</code>; only pointers are exchanged, the data is not copied. DMA-BUF shares one buffer between kernel subsystems as a file descriptor: the owner exports it with <code>VIDIOC_EXPBUF</code>, and an importer switches to <code>V4L2_MEMORY_DMABUF</code> at <code>VIDIOC_REQBUFS</code> and queues the descriptor rather than an index. Every node checked here advertises both mmap and dmabuf. No <code>rp1-cfe</code> or <code>pispbe</code> node advertises <code>userptr</code>; the UVC node is the only one on this board that does.</p>
+<p><strong>Media entity, pad, link.</strong> An entity is a hardware or software building block. A pad is a data connection endpoint on an entity. A data link is a point-to-point oriented connection from a source pad to a sink pad. Two further terms are this page's own shorthand rather than the kernel's: a subdev is an entity with a control interface at <code>/dev/v4l-subdev*</code>, and a node entity wraps a <code>/dev/video*</code> device node.</p>
+<hr>
+<h2 id="what-this-was-measured-on">What this was measured on<a class="headerlink" href="#what-this-was-measured-on" title="Permanent link">¶</a></h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Board</td>
+<td>Raspberry Pi 5 Model B Rev 1.1</td>
+</tr>
+<tr>
+<td>Kernel</td>
+<td><code>6.12.47+rpt-rpi-2712</code>, aarch64</td>
+</tr>
+<tr>
+<td>Media Controller API</td>
+<td>6.12.47, reported by all five media devices</td>
+</tr>
+<tr>
+<td><code>v4l2-ctl</code>, <code>media-ctl</code></td>
+<td>1.30.1</td>
+</tr>
+<tr>
+<td>Sensors</td>
+<td>IMX477 on one port, IMX708 on the other</td>
+</tr>
+<tr>
+<td>libcamera</td>
+<td><code>0.5.2+rpt20250903-1+b1</code>, build <code>v0.5.2+99-bfd68f78</code></td>
+</tr>
+<tr>
+<td>rpicam-apps</td>
+<td>1.9.1, distribution package</td>
+</tr>
+<tr>
+<td>Kernel source read at</td>
+<td><code>dbe6dc7e9a75</code> on <code>rpi-6.12.y</code></td>
+</tr>
+</tbody>
+</table>
+<p>That last row carries a caveat of its own. The board runs <code>6.12.47</code> and the branch has moved well past it, so a driver detail read at that commit is not guaranteed to describe the running kernel; where a claim rests on source rather than on a measurement, it says so. And <code>CONFIG_DYNAMIC_DEBUG</code> is unset in this build, which is why most of the driver's diagnostic messages never reach the log.</p>
+<hr>
+<h2 id="what-this-page-does-not-establish">What this page does not establish<a class="headerlink" href="#what-this-page-does-not-establish" title="Permanent link">¶</a></h2>
+<p>These are open questions rather than omissions, because a reference page that quietly drops its gaps is worse than one that names them.</p>
+<p>The hand-built back-end pass is the big one, and it now blocks a second question behind it. libcamera's own configuration completes a pass; a configuration built by the application did not, returning its input and config buffers clean and nothing at all on the output. Whether that config was valid is unresolved, and the driver cannot be asked on this kernel for the reasons in the errno section. Until it resolves, the <code>rp1-cfe</code> to <code>pispbe</code> zero-copy path is verified only as far as the import: the descriptor crosses and the queue starts, and no processed frame has come out the far end of one.</p>
+<p>Cache coherency around that path is a sourcing failure, not a measurement gap. Whether <code>DMA_BUF_IOCTL_SYNC</code> is required around CPU access to an imported buffer, because BCM2712 DMA is not cache-coherent, is a claim I could not stand up: no round trip with CPU reads was executed, and no citable vendor document states the coherency property either way.</p>
+<p>The rest are simply out of reach here. Sustained power draw by workload, and the cooling class each needs, with no measurement equipment available. What the equivalents are on a Raspberry Pi 4, which is the substitution I am most likely to get wrong by analogy and least able to check, with no Pi 4 to hand. And the rate at which the two blocks sustain concurrent dual-camera capture: each port is wired for two data lanes and the driver logs <code>Using a link rate of 900 Mbps</code> per lane, so the budget is 1.8 Gbit/s per port, but what the pair actually sustains together was never measured.</p>
+<hr>
+<h2 id="further-reading">Further Reading<a class="headerlink" href="#further-reading" title="Permanent link">¶</a></h2>
+<ul>
+<li><a href="https://www.kernel.org/doc/html/latest/userspace-api/media/v4l/v4l2.html">Video4Linux API reference</a></li>
+<li><a href="https://www.kernel.org/doc/html/latest/userspace-api/media/mediactl/media-controller.html">Media Controller API reference</a></li>
+<li><a href="https://libcamera.org/">libcamera documentation</a></li>
+<li><a href="https://www.raspberrypi.com/documentation/computers/camera_software.html">Raspberry Pi camera software documentation</a></li>
+<li><a href="https://github.com/raspberrypi/linux">raspberrypi/linux</a>, the tree every driver-source claim on this page was read from</li>
+<li><strong>Next:</strong> A5, V4L2 controls and the 3A loops (planned), where the sensor writes this page keeps mentioning stop being a side effect and become the subject</li>
+</ul>
+<hr>
+<div class="footnote">
+<hr>
+<ol>
+<li id="fn:querycap">
+<p><code>Documentation/userspace-api/media/v4l/vidioc-querycap.rst</code>, <code>raspberrypi/linux</code> at <code>dbe6dc7e9a75</code> on <code>rpi-6.12.y</code>.&nbsp;<a class="footnote-backref" href="#fnref:querycap" title="Jump back to footnote 1 in the text">↩</a></p>
+</li>
+<li id="fn:mem2mem">
+<p><code>Documentation/userspace-api/media/v4l/dev-mem2mem.rst</code>, same tree and commit.&nbsp;<a class="footnote-backref" href="#fnref:mem2mem" title="Jump back to footnote 2 in the text">↩</a></p>
+</li>
+<li id="fn:ipamatch">
+<p><code>src/libcamera/ipa_module.cpp</code>, <code>IPAModule::match()</code>, <code>raspberrypi/libcamera</code> branch <code>v0.5.2+rpt20250903</code>.&nbsp;<a class="footnote-backref" href="#fnref:ipamatch" title="Jump back to footnote 3 in the text">↩</a></p>
+</li>
+<li id="fn:sensorlegacy">
+<p><code>src/libcamera/sensor/camera_sensor_legacy.cpp</code>, <code>CameraSensorLegacy::init()</code>, <code>raspberrypi/libcamera</code> branch <code>v0.5.2+rpt20250903</code>.&nbsp;<a class="footnote-backref" href="#fnref:sensorlegacy" title="Jump back to footnote 4 in the text">↩</a></p>
+</li>
+</ol>
+</div>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer">
+        
+          
+          <a href="../A1-camera-sensor-fundamentals/" class="md-footer__link md-footer__link--prev" aria-label="Previous: A1 — Camera Sensor Fundamentals">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                A1 — Camera Sensor Fundamentals
+              </div>
+            </div>
+          </a>
+        
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://gtog.dev/feed_rss_created.xml" target="_blank" rel="noopener" title="gtog.dev" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M64 32C28.7 32 0 60.7 0 96v320c0 35.3 28.7 64 64 64h320c35.3 0 64-28.7 64-64V96c0-35.3-28.7-64-64-64zm32 104c0-13.3 10.7-24 24-24 137 0 248 111 248 248 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-110.5-89.5-200-200-200-13.3 0-24-10.7-24-24m0 96c0-13.3 10.7-24 24-24 83.9 0 152 68.1 152 152 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-57.4-46.6-104-104-104-13.3 0-24-10.7-24-24m0 120a32 32 0 1 1 64 0 32 32 0 1 1-64 0"></path></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/astavonin/glass-to-glass" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"></path></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.footer", "search.suggest", "search.highlight", "content.code.copy", "content.code.annotate", "toc.follow", "navigation.sections", "navigation.tabs", "toc.integrate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  
+<script id="init-glightbox">const lightbox = GLightbox({"touchNavigation": true, "loop": false, "zoomable": true, "draggable": true, "openEffect": "zoom", "closeEffect": "zoom", "slideEffect": "slide"});
+document$.subscribe(()=>{ lightbox.reload(); });
+</script></body></html>
