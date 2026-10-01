@@ -64,6 +64,7 @@ nav:
   - Appendix:
     - appendix/index.md
     - A1 — Camera Sensor Fundamentals: appendix/A1-camera-sensor-fundamentals.md
+    - A3 — The Linux Camera Stack: appendix/A3-linux-camera-stack.md
 
 markdown_extensions:
   - toc:

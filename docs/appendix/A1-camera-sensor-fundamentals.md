@@ -195,7 +195,9 @@ The IMX477's pixels are larger (1.55 µm against the IMX708's 1.4 µm), so it pu
 
 ### Selecting a Mode
 
-You don't ask for a mode by name. You request a resolution and frame rate through `VIDIOC_S_FMT` and `VIDIOC_S_PARM`, and the driver snaps to the nearest mode it has. To see what's on offer before you negotiate, enumerate with `VIDIOC_ENUM_FRAMESIZES` and `VIDIOC_ENUM_FRAMEINTERVALS` (see [A3 — Linux Camera Stack](A3-linux-camera-stack.md)).
+You don't ask for a mode by name. You request a resolution through `VIDIOC_S_FMT` and the driver snaps to the nearest mode it has.
+
+Finding out what is on offer is harder than it should be, and on a Pi 5 the obvious route does not work. `VIDIOC_ENUM_FRAMESIZES` on a capture node returns a single stepwise range rather than the sensor's mode list, `VIDIOC_ENUM_FRAMEINTERVALS` is not implemented by the driver at all, and `VIDIOC_G_PARM` and `VIDIOC_S_PARM` are absent with it: all three return `ENOTTY`. The discrete modes come from the sensor subdev through `VIDIOC_SUBDEV_ENUM_FRAME_SIZE`, and the frame-rate table comes from libcamera rather than from V4L2. [A3 — Linux Camera Stack](A3-linux-camera-stack.md) has the measurements and the reason.
 
 ---
 

@@ -31,19 +31,23 @@ mkdocs serve      # preview at http://localhost:8000
 
 Raspberry Pi 5, kernel `6.12.47+rpt-rpi-2712`. Two cameras attached:
 
-| Video nodes | Sensor | Model | Stable identifier |
+| Sensor | Model | Stable identifier | Video nodes, no USB video at boot |
 |---|---|---|---|
-| `/dev/video0`–`7` | IMX477 | HQ Camera, fixed focus | `platform:1f00128000.csi` |
-| `/dev/video8`–`15` | IMX708 | Camera Module 3, VCM autofocus (dw9807) | `platform:1f00110000.csi` |
+| IMX477 | HQ Camera, fixed focus | `platform:1f00128000.csi` | `/dev/video0`–`7` |
+| IMX708 | Camera Module 3, VCM autofocus (dw9807) | `platform:1f00110000.csi` | `/dev/video8`–`15` |
 
-Four things that change how code gets written. Everything else about this board — ISP topology, formats, strides, node roles — belongs to the appendix docs, not here.
+**The bus address is the identifier. The node range is not** — it is an observation about one driver-binding order, and the last column holds only while no USB video device is present at power-up. Measured 2026-09-30 with a UVC webcam attached at boot: it enumerated ahead of the platform drivers, took `/dev/video0`–`1`, and both CFE blocks shifted up by two to `/dev/video2`–`9` and `/dev/video10`–`17`. Six media nodes existed on that boot rather than five.
 
-- **Never hardcode `/dev/mediaN`.** The numbers are boot artifacts: measured 2026-08-12, every media node moved across a plain reboot with no kernel or hardware change, while every video node held. Resolve by bus info:
+Five things that change how code gets written. Everything else about this board — ISP topology, formats, strides, node roles — belongs to the appendix docs, not here.
+
+- **Never hardcode `/dev/mediaN`, and do not hardcode `/dev/videoN` either.** Media numbers are boot artifacts: measured 2026-08-12, every media node moved across a plain reboot with no kernel or hardware change. Video numbers held across four such boots, then moved on the fifth when a USB camera was present at power-up. Resolve by bus info, then take the video nodes from the graph:
   ```bash
   for m in /dev/media*; do echo -n "$m "; media-ctl -d "$m" -p | grep '^bus info'; done
+  media-ctl -d "$M" -p | grep -E '^- entity|device node name'   # entity -> /dev/videoN
   ```
+- **Setting every pad format is not enough to stream.** A video node holds a format of its own that no pad write propagates into, and `cfe_video_link_validate()` checks it against the remote pad at `STREAMON`: a mismatch is `EINVAL` with `Wrong width or height` in `dmesg`. The bypass path needs four steps, not three — enable the link, set the sensor pad, set the `csi2` sink pad, then `VIDIOC_S_FMT` on the video node.
 - **`rp1-cfe` nodes report `I/O MC`.** `open` + `VIDIOC_S_FMT` is not enough — `S_FMT` succeeds and `STREAMON` is what fails. `media-ctl` pipeline setup must come first, so hardware integration tests cannot call `CaptureSession::new(device_index)` directly.
-- **`rp1-cfe` capture is single-plane** (`/dev/video0` caps `0x24a00001`). `pispbe` is the multiplanar one (`0x04201000`) and carries no `I/O MC`. Do not assume MPLANE for "the Pi camera".
+- **`rp1-cfe` capture is single-plane** (a `csi2_ch0` node reads caps `0x24a00001`). `pispbe` is the multiplanar one (`0x04201000`) and carries no `I/O MC`. Do not assume MPLANE for "the Pi camera". In that word, `0x00200000` is `V4L2_CAP_EXT_PIX_FORMAT`, not `V4L2_CAP_DEVICE_CAPS` — the latter is `0x80000000` and never appears in `device_caps`.
 - **There is no hardware video encoder on this board.** Any claim of a "Pi 5 V4L2 M2M encoder" is false. Encoding here is software or off-board. This fabrication has reached a published article once — treat it as a known trap.
 
 Verified hardware facts live in `planning/book/appendix/issues/A3-linux-camera-stack/spec.md` §2/§5, with the command and captured output behind each one. Known-bad claims in the research notes are tracked in `planning/book/appendix/status.md`.
