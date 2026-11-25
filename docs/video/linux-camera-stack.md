@@ -508,6 +508,12 @@ The rest are simply out of reach here. Sustained power draw by workload, and the
 
 [^querycap]: `Documentation/userspace-api/media/v4l/vidioc-querycap.rst`, `raspberrypi/linux` at `dbe6dc7e9a75` on `rpi-6.12.y`.
 
+## Related
+
+- [Camera Sensor Fundamentals](camera-sensor-fundamentals.md) — what the sensor puts on the bus before any of this: Bayer patterns, bit depth and the MIPI packed layouts these nodes hand you.
+- [Two ISP Architectures: Pi 5 and Orange Pi 6 Plus](../npu-gpu/isp-architectures.md) — the same V4L2 interfaces on a board whose vendor driver creates no pads and no links, so none of the graph walking here is possible.
+- [Integration Testing for Linux Video Pipelines](../ci/integration-testing.md) — exercising this ioctl surface with `vivid` instead of a real sensor.
+
 [^mem2mem]: `Documentation/userspace-api/media/v4l/dev-mem2mem.rst`, same tree and commit.
 
 [^ipamatch]: `src/libcamera/ipa_module.cpp`, `IPAModule::match()`, `raspberrypi/libcamera` branch `v0.5.2+rpt20250903`.

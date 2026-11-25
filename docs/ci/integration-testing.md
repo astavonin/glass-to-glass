@@ -26,7 +26,7 @@ This creates a systemic blind spot. Unit tests validate logic in an environment 
 
 This gap is structural, not accidental. It comes from how different test layers interact with the system stack and which boundaries they actually cross.
 
-![](img/02.01-testing-layers.png){ width="640" }
+![Test coverage across the stack: unit tests confined to application logic, hardware-in-the-loop crossing the whole stack but outside the development loop, and virtual-device integration tests crossing the kernel boundary in CI](img/02.01-testing-layers.png){ width="640" }
 
 The diagram shows how coverage is distributed across a Linux video, or any other typical embedded system. Unit tests remain confined to application logic and never cross into the kernel. Hardware-in-the-loop testing exercises the full stack, but it sits outside the normal development loop and is expensive to run continuously. Virtual-device integration tests occupy the middle ground. They drive real syscalls and kernel code paths through emulated drivers, allowing the user-space-to-kernel boundary to be exercised early, repeatedly, and in CI, without relying on physical hardware.
 
@@ -129,7 +129,7 @@ On Linux, that driver is `vivid`.
 
 From user space, the application does not talk to hardware directly. It talks to the V4L2 API. Whether the request is handled by a physical camera driver or a virtual one is an implementation detail hidden behind the kernel interface.
 
-![](img/02.02-V4L2-interface.png){ width="640" }
+![The application talks to the V4L2 API, not to hardware: a physical camera driver and vivid sit behind the same kernel interface](img/02.02-V4L2-interface.png){ width="640" }
 
 This is why vivid works for integration testing. It registers `/dev/video*` nodes and implements the same ioctls, buffer APIs, and metadata semantics as real capture devices. The code under test follows the same execution paths either way.
 

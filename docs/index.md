@@ -2,9 +2,15 @@
 
 A camera lens at one end, a display at the other, and a frame that has to cross everything in between. This site follows that path on cheap ARM hardware — what each stage actually costs, where it breaks, and which assumptions stop being true once you measure instead of reading the datasheet.
 
-The pipeline is the project. The other two sections exist because it needs them: **CI**, because a pipeline nobody tests on real hardware decays without anyone noticing, and **NPU/GPU**, because the frames eventually have to feed something.
+## The sections
 
-Every number here was measured on a board on my desk, with the date, the kernel and the command recorded. Where something is inferred rather than measured, it says so. Where an earlier version of a page was wrong, the correction stays visible with its date — the refutations tend to be more useful than the claims.
+The pipeline is the project. The other two exist because it needs them.
+
+**[Video Streaming](video/index.md)** — the pipeline itself. What a frame is before anyone debayers it, how the kernel exposes the capture hardware, what software encode costs when the board has no encoder, and what a real one buys you.
+
+**[CI](ci/index.md)** — how it stays honest, because a pipeline nobody tests on real hardware decays without anyone noticing. One pinned toolchain for the laptop and the runner, tests that exercise the kernel boundary with no camera attached, and real boards wired into the pipeline.
+
+**[Accelerators](npu-gpu/index.md)** — the fixed-function silicon every frame crosses or feeds: ISP, video codec, NPU, GPU. Three of the four are closed vendor stacks, and each has already contradicted its own documentation.
 
 ## The boards
 
@@ -18,15 +24,9 @@ Every number here was measured on a board on my desk, with the date, the kernel 
 
 That last row is why there are two boards. One has a clean kernel stack and no encoder; the other has a serious hardware encoder and a stack you cannot inspect. Almost everything worth writing down comes out of the gap between them.
 
-## The sections
-
-**[Video Streaming](video/index.md)** — the pipeline itself. What a frame is before anyone debayers it, how the kernel exposes the capture hardware, what software encode costs when the board has no encoder, and what a real one buys you.
-
-**[CI](ci/index.md)** — how the pipeline stays honest. One pinned toolchain for the laptop and the runner, tests that exercise the kernel boundary with no camera attached, and real boards wired into the pipeline so nobody has to sit next to the hardware.
-
-**[NPU/GPU](npu-gpu/index.md)** — what the frames feed. An NPU is a DMA-fed VLIW cluster behind an SMMU, programmed by a closed cross-compiler. Not an AI chip. Every surprise follows from that.
-
 ## How to read it
+
+Every number here was measured on a board on my desk, with the date, the kernel and the command recorded. Where something is inferred rather than measured, it says so. Where an earlier version of a page was wrong, the correction stays visible with its date — the refutations tend to be more useful than the claims.
 
 Pages are independent. Each answers one question and states what it does not cover, so there is no reading order and nothing is a prerequisite for anything else.
 

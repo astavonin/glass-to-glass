@@ -249,3 +249,4 @@ The IMX477 has none of this on-sensor. If you want HDR there, you merge sequenti
 - [Sony IMX708 product page](https://www.sony-semicon.com/en/products/is/mobile/imx708.html)
 - [Sony IMX477 product page](https://www.sony-semicon.com/en/products/is/mobile/imx477.html)
 - **Next:** [The Linux Camera Stack](linux-camera-stack.md), how the kernel exposes this hardware and what it refuses to tell you
+- [Two ISP Architectures: Pi 5 and Orange Pi 6 Plus](../npu-gpu/isp-architectures.md), what happens when the kernel declines to describe the sensor at all
