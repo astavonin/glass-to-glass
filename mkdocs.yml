@@ -1,7 +1,7 @@
 # mkdocs.yml - Configuration for MkDocs
 
-site_name: Glass-to-Glass Video Pipeline
-site_description: A practical reference for building glass-to-glass video pipelines on constrained hardware. This site complements the code by explaining design choices, failure modes, and observed behavior across the system.
+site_name: Glass-to-Glass Video Pipelines
+site_description: What cheap ARM hardware actually does. Measured video capture, encode, vendor accelerators and hardware CI on a Raspberry Pi 5 and an Orange Pi 6 Plus, with the date, kernel and command behind every number.
 repo_url: https://github.com/astavonin/glass-to-glass
 site_url: https://gtog.dev
 
@@ -55,16 +55,15 @@ extra:
 
 nav:
   - Home: index.md
-  - Blog: blog/index.md
-  - Frame Capture:
-    - part01/index.md
-    - Cross-Compiling Rust for Raspberry Pi: part01/01-rust-on-pi.md
-    - Integration Testing for Linux Video Pipelines: part01/02-emulation-and-video-testing.md
-    - Zero-Copy Capture Engine — CaptureSession and Stable FPS: part01/03-capture-session.md
-  - Appendix:
-    - appendix/index.md
-    - A1 — Camera Sensor Fundamentals: appendix/A1-camera-sensor-fundamentals.md
-    - A3 — The Linux Camera Stack: appendix/A3-linux-camera-stack.md
+  - Video Streaming:
+    - video/index.md
+    - Camera Sensor Fundamentals: video/camera-sensor-fundamentals.md
+    - The Linux Camera Stack: video/linux-camera-stack.md
+  - CI:
+    - ci/index.md
+    - Integration Testing for Linux Video Pipelines: ci/integration-testing.md
+  - NPU/GPU:
+    - npu-gpu/index.md
 
 markdown_extensions:
   - toc:
@@ -91,11 +90,23 @@ markdown_extensions:
 
 plugins:
   - search
-  - blog
   - glightbox
   - include-markdown
+  - redirects:
+      redirect_maps:
+        # Book-era paths. Kept so existing links and search results resolve.
+        appendix/A1-camera-sensor-fundamentals.md: video/camera-sensor-fundamentals.md
+        appendix/A3-linux-camera-stack.md: video/linux-camera-stack.md
+        appendix/index.md: video/index.md
+        part01/02-emulation-and-video-testing.md: ci/integration-testing.md
+        part01/index.md: video/index.md
+        # Retired: duplicated on sysdev.me, and a Rust implementation that is
+        # not being ported. Both land on the section that replaced them.
+        part01/01-rust-on-pi.md: video/index.md
+        part01/03-capture-session.md: video/index.md
+        blog/index.md: index.md
   - rss:
-      match_path: "(blog|part01)/.*"
+      match_path: "(video|ci|npu-gpu)/(?!index).*"
       date_from_meta:
         as_creation: date.created
         as_update: date.updated

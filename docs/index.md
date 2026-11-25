@@ -1,28 +1,35 @@
-# A practical reference for building glass-to-glass video pipelines on constrained hardware
+# Glass-to-Glass
 
-This site exists to explain the code, not to replace it. Right now, the code lives in a single public repository:
+A camera lens at one end, a display at the other, and a frame that has to cross everything in between. This site follows that path on cheap ARM hardware — what each stage actually costs, where it breaks, and which assumptions stop being true once you measure instead of reading the datasheet.
 
-* [https://github.com/astavonin/pi-cam-capture](https://github.com/astavonin/pi-cam-capture)
+The pipeline is the project. The other two sections exist because it needs them: **CI**, because a pipeline nobody tests on real hardware decays without anyone noticing, and **NPU/GPU**, because the frames eventually have to feed something.
 
-**This repository is the source of truth.**
+Every number here was measured on a board on my desk, with the date, the kernel and the command recorded. Where something is inferred rather than measured, it says so. Where an earlier version of a page was wrong, the correction stays visible with its date — the refutations tend to be more useful than the claims.
 
-The glass-to-glass video pipeline is built incrementally. What exists today is a working foundation: concrete hardware choices, an initial capture path, early transport experiments, and basic observability. Many parts are incomplete and some decisions will change as the system is exercised under real constraints.
+## The boards
 
-The goal is to document the system while it is being built, not after it has been polished. Design decisions and failure modes are captured as they happen. If the documentation and the code ever diverge, the code wins.
+| | Raspberry Pi 5 | Orange Pi 6 Plus |
+|---|---|---|
+| SoC | BCM2712, Cortex-A76 | CIX P1 / CD8180 "Sky1" |
+| Camera | IMX477 and IMX708 over CSI-2 | 13 MP MIPI-CSI, plus USB |
+| Video encode | **none — there is no encoder on this board** | Linlon V8, 18 × 1080p30 sustained |
+| Inference | — | Zhouyi V3 NPU, 30 TOPS |
+| Camera stack | upstream kernel drivers, walkable media graph | closed vendor daemon that panics the kernel |
 
-## How to read this site
+That last row is why there are two boards. One has a clean kernel stack and no encoder; the other has a serious hardware encoder and a stack you cannot inspect. Almost everything worth writing down comes out of the gap between them.
 
-Each article focuses on a narrow, concrete problem and explains the reasoning behind a specific set of changes.
+## The sections
 
-Every article links to a GitHub diff that shows the exact code changes discussed. The diff is the authoritative reference. The text exists to explain why those changes were made.
+**[Video Streaming](video/index.md)** — the pipeline itself. What a frame is before anyone debayers it, how the kernel exposes the capture hardware, what software encode costs when the board has no encoder, and what a real one buys you.
 
-!!! example
-    Like this! Each article starts with such block.
+**[CI](ci/index.md)** — how the pipeline stays honest. One pinned toolchain for the laptop and the runner, tests that exercise the kernel boundary with no camera attached, and real boards wired into the pipeline so nobody has to sit next to the hardware.
 
-## Scope
+**[NPU/GPU](npu-gpu/index.md)** — what the frames feed. An NPU is a DMA-fed VLIW cluster behind an SMMU, programmed by a closed cross-compiler. Not an AI chip. Every surprise follows from that.
 
-This is not a tutorial series or a reference implementation. It assumes familiarity with Linux, V4L2, and video pipelines, and focuses on operational behavior rather than abstractions.
+## How to read it
 
-The site will change as the code changes. Sections will be revised, approaches will be dropped, and assumptions will be challenged.
+Pages are independent. Each answers one question and states what it does not cover, so there is no reading order and nothing is a prerequisite for anything else.
 
-The intent is to make the system’s evolution visible, not to present a finished design.
+This is not a tutorial. It assumes Linux, C++, and some exposure to V4L2 or an equivalent driver API, and it spends its time on measured behaviour rather than on abstractions.
+
+Code lives in separate repositories, linked from the pages that discuss it. The implementation language is C++23, built with Bazel. Earlier work was in Rust; where a page still shows Rust, it says so at the top.

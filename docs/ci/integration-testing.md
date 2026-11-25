@@ -1,10 +1,16 @@
+---
+date:
+  created: 2025-12-25
+tags:
+  - ci
+  - testing
+  - v4l2
+---
+
 # Integration Testing for Linux Video Pipelines
 
-!!! example
-    If you just want the end result, use the repo diff as a reference: [pi-cam-capture?diff](https://github.com/astavonin/pi-cam-capture/compare/ci-and-cross...emulation-and-video-testing?diff).
-
-    It shows the exact changes covered in this article, as they exist in the repository today, without extra commentary.
-
+!!! note "Rust original"
+    The code here is Rust, against [`pi-cam-capture`](https://github.com/astavonin/pi-cam-capture), which is no longer the active implementation. The technique is language-neutral: `vivid` and the layered test structure apply unchanged to the C++ pipeline, and a C++ version of this page will replace it.
 
 Most embedded Linux projects end up with the same testing setup. Unit tests cover parts of the logic, often in a patchy way, because syscalls and OS behavior are out of scope. Hardware-in-the-loop is used to check that the system works on the real device. Even in theory, this combination is weak and fragile, but in many teams it is still treated as "good enough". The blind spot is always the same. The boundary between user space and the kernel is rarely exercised during normal development, even though that is where a large share of real failures occur.
 

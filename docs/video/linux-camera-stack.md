@@ -1,4 +1,13 @@
-# A3: The Linux Camera Stack
+---
+date:
+  created: 2026-10-01
+tags:
+  - video
+  - v4l2
+  - raspberry-pi
+---
+
+# The Linux Camera Stack
 
 V4L2 device nodes, capability bits, the Media Controller graph, stride and buffer ownership, and the block topology of the Pi 5 capture path.
 
@@ -279,7 +288,7 @@ The `csi2_ch*` nodes take frames straight to memory. The `fe_image*` nodes take 
 
 Grey is metadata, teal is image data. That's the distinction people get wrong, because `fe_config` sits in a block of eight nodes that look interchangeable from the numbering and isn't one of them.
 
-Which route you take decides what you can get out. A front-end image node offers 10 formats, all Bayer or mono: no YUV, no RGB. The back end's nodes offer 50, including YUV at three subsamplings. So debayering happens in the back end, and if you want anything but raw off the front-end route, you cannot have it there. How the back end does it, stage by stage, is covered in A2 on the ISP pipeline, planned.
+Which route you take decides what you can get out. A front-end image node offers 10 formats, all Bayer or mono: no YUV, no RGB. The back end's nodes offer 50, including YUV at three subsamplings. So debayering happens in the back end, and if you want anything but raw off the front-end route, you cannot have it there. What the back end contains, block by block, is covered in A2 on the ISP pipeline, planned.
 
 The back end sits outside this graph entirely. Each `pispbe` context reads a finished frame out of memory through `pispbe-input`, takes a configuration buffer through `pispbe-config`, and writes the processed result back through one of its outputs. There are two such contexts, `/dev/video20`–`27` and `/dev/video28`–`35`. Neither needs any `media-ctl` work, for reasons the memory-to-memory section gets to.
 

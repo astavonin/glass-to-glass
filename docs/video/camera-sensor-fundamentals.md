@@ -1,6 +1,15 @@
-# A1 — Camera Sensor Fundamentals
+---
+date:
+  created: 2026-06-17
+tags:
+  - video
+  - sensors
+  - raspberry-pi
+---
 
-Photodiodes, Bayer colour filter arrays, bit depth, packed raw formats, rolling shutter, sensor modes, and HDR. Referenced from Part 1/04 (pixel formats in code).
+# Camera Sensor Fundamentals
+
+Photodiodes, Bayer colour filter arrays, bit depth, packed raw formats, rolling shutter, sensor modes, and HDR. The groundwork for everything the capture path does with a frame.
 
 > **Platform note:** All bit-level layouts here assume **little-endian** byte order. Raspberry Pi 5 (BCM2712, Cortex-A76) is little-endian. Adjust if you port to a big-endian system.
 
@@ -8,7 +17,7 @@ Photodiodes, Bayer colour filter arrays, bit depth, packed raw formats, rolling 
 
 ## How Camera Sensors Work
 
-Pull a raw frame straight off `/dev/video0` on the Pi 5 and you don't get a picture. You get a block of 10-bit packed bytes that decodes to a green-tinted grid of garbage. Everything in this appendix lives between that block and an actual image: how the sensor turns photons into numbers, why those numbers skew green, and how they get crammed into memory.
+Pull a raw frame straight off `/dev/video0` on the Pi 5 and you don't get a picture. You get a block of 10-bit packed bytes that decodes to a green-tinted grid of garbage. Everything on this page lives between that block and an actual image: how the sensor turns photons into numbers, why those numbers skew green, and how they get crammed into memory.
 
 A sensor is a grid of millions of photodiodes, and each one does the same dumb job. Collect photons during exposure. Let them knock loose some charge. Read the charge out as a voltage. Hand the voltage to an ADC. Four steps, a few million times a frame.
 
@@ -197,7 +206,7 @@ The IMX477's pixels are larger (1.55 µm against the IMX708's 1.4 µm), so it pu
 
 You don't ask for a mode by name. You request a resolution through `VIDIOC_S_FMT` and the driver snaps to the nearest mode it has.
 
-Finding out what is on offer is harder than it should be, and on a Pi 5 the obvious route does not work. `VIDIOC_ENUM_FRAMESIZES` on a capture node returns a single stepwise range rather than the sensor's mode list, `VIDIOC_ENUM_FRAMEINTERVALS` is not implemented by the driver at all, and `VIDIOC_G_PARM` and `VIDIOC_S_PARM` are absent with it: all three return `ENOTTY`. The discrete modes come from the sensor subdev through `VIDIOC_SUBDEV_ENUM_FRAME_SIZE`, and the frame-rate table comes from libcamera rather than from V4L2. [A3 — Linux Camera Stack](A3-linux-camera-stack.md) has the measurements and the reason.
+Finding out what is on offer is harder than it should be, and on a Pi 5 the obvious route does not work. `VIDIOC_ENUM_FRAMESIZES` on a capture node returns a single stepwise range rather than the sensor's mode list, `VIDIOC_ENUM_FRAMEINTERVALS` is not implemented by the driver at all, and `VIDIOC_G_PARM` and `VIDIOC_S_PARM` are absent with it: all three return `ENOTTY`. The discrete modes come from the sensor subdev through `VIDIOC_SUBDEV_ENUM_FRAME_SIZE`, and the frame-rate table comes from libcamera rather than from V4L2. [The Linux Camera Stack](linux-camera-stack.md) has the measurements and the reason.
 
 ---
 
@@ -213,9 +222,9 @@ Note the output is still 10-bit. The extra range lives in the tone curve, not in
 
 The constraints are where it bites. HDR only works in the 2304x1296 binned mode. Full-res and the 1536x864 120fps mode can't do it, their readout timing has no room for the second exposure. And the second exposure isn't free: that binned mode drops from 56fps to roughly 28 in HDR, because each output frame now needs two sequential captures. Verify the exact rate on your kernel and firmware, since the IPA tuning file can move it. You also pick up motion artefacts at the merge seam when the scene shifts between exposures, and flash sync is gone, because two exposures make the sync geometry inconsistent. You enable the whole thing through libcamera's `controls::HdrMode`; raw V4L2 won't expose it.
 
-It does play nicely with multi-stream output. The merged frame feeds the ISP like any other, so a low-res preview alongside the main recording works fine in HDR. The stream-count limits are in [A2 — Multi-Stream Output](A2-isp-pipeline.md).
+The merged frame feeds the ISP like any other, so nothing about HDR changes what the ISP can do with it downstream. How many outputs that is, and what each one can be configured to, is a question about the ISP back end rather than the sensor, and is not covered here.
 
-The IMX477 has none of this on-sensor. If you want HDR there, you merge sequential frames yourself in the application, and you eat the motion artefacts that come from the scene moving frame to frame. Which is the natural lead into A2, where the raw Bayer data finally meets the ISP.
+The IMX477 has none of this on-sensor. If you want HDR there, you merge sequential frames yourself in the application, and you eat the motion artefacts that come from the scene moving frame to frame.
 
 ---
 
@@ -239,4 +248,4 @@ The IMX477 has none of this on-sensor. If you want HDR there, you merge sequenti
 - [Bayer filter — Wikipedia](https://en.wikipedia.org/wiki/Bayer_filter)
 - [Sony IMX708 product page](https://www.sony-semicon.com/en/products/is/mobile/imx708.html)
 - [Sony IMX477 product page](https://www.sony-semicon.com/en/products/is/mobile/imx477.html)
-- **Next:** [A2 — The ISP Pipeline](A2-isp-pipeline.md), what happens to raw Bayer data before it reaches your application
+- **Next:** [The Linux Camera Stack](linux-camera-stack.md), how the kernel exposes this hardware and what it refuses to tell you
